@@ -33,6 +33,10 @@ Before handing off a change, run `npm run lint`, `npm run build`, and `npm test`
 
 The running local preview is `http://127.0.0.1:5173`; the development API is `http://127.0.0.1:8787`. Local accounts show a recovery code rather than sending email.
 
+## License
+
+Released under the [MIT License](LICENSE). You can self-host Forma for personal, team, or commercial use; keep server credentials out of version control.
+
 ## Product boundaries
 
 Forma preserves manuscript wording through deterministic text mapping; it does not promise byte-identical whitespace or automatic recovery of an arbitrary flattened design. Reference replacement uses editable text over solid color covers. Textured backgrounds, original font recovery, unlimited layers, and generative retouching are outside this beta. AI proposes regions for human review; it does not write the approved manuscript.

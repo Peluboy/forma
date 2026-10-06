@@ -1,0 +1,65 @@
+/* Shared Studio Ink UI primitives — use semantic tokens only. */
+
+/* NOTE: .button / .ui-button kept here as legacy shim for unmigrated callsites.
+ * New code should use the <Button> component from shared/components/ui/Button.tsx
+ * Delete this block once all callsites are migrated. */
+.ui-button,
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--control-height);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 550;
+  border: 1px solid transparent;
+  transition:
+    background 0.15s ease-out,
+    border-color 0.15s ease-out,
+    color 0.15s ease-out;
+}
+.button.primary,
+.ui-button.primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+.button.primary:hover:not(:disabled),
+.ui-button.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.button.secondary,
+.ui-button.secondary {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+.button.secondary:hover:not(:disabled),
+.ui-button.secondary:hover:not(:disabled) {
+  background: var(--bg-muted);
+}
+.button.ghost,
+.ui-button.ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.button.ghost:hover:not(:disabled),
+.ui-button.ghost:hover:not(:disabled) {
+  background: var(--bg-muted);
+  color: var(--text-primary);
+}
+.button.danger,
+.ui-button.danger {
+  background: var(--danger);
+  color: #fff;
+}
+.button:disabled,
+.ui-button:disabled {
+  opacity: 0.45;
+}
+.ui-button.ui-button-sm {
+  height: 28px;
+  padding-inline: var(--space-3);
+  font-size: var(--text-xs);
+}

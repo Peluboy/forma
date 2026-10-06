@@ -1,0 +1,13 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+*.tsbuildinfo
+.DS_Store
+product-completion-plan.md
+
+.data/
+.env
+.env.local
+.env.*.local
+.vercel/
