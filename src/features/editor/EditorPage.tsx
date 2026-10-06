@@ -4,9 +4,13 @@ import "../../styles/editor-overhaul.css";
 import { useEffect, useRef, useState } from "react";
 import { X, CheckCircle2 } from "lucide-react";
 import Poster, { getFits } from "./components/Poster";
-import { readLocalProjects } from "./hooks/usePersistence";
 import { layerFits } from "./components/TextLayers";
 import { EditorModalHost, type EditorDialog } from "./dialogs/EditorModalHost";
+import {
+  GUIDE_DISMISSED_KEY,
+  readProjects,
+  shouldAutoShowGuide,
+} from "./lib/projectGuide";
 import {
   duplicateAddedLayer,
   moveAddedLayer,
@@ -20,7 +24,6 @@ import {
   outputPixels,
   parseManuscript,
   parseManuscriptBlocks,
-  sampleManuscript,
   serializeCopy,
   templates,
   unmappedFields,
@@ -85,36 +88,6 @@ import {
 
 type Nav = EditorNav;
 type Dialog = EditorDialog;
-function readProjects(): Project[] {
-  return readLocalProjects();
-}
-const GUIDE_DISMISSED_KEY = "forma.editor.guide.dismissed.v1";
-
-/** True while a project is still the untouched first-visit sample. */
-function isUntouchedProject(project: Project): boolean {
-  return (
-    project.designMode === "template" &&
-    project.template === "gathering" &&
-    !project.reference &&
-    !project.textLayers?.length &&
-    !project.graphicLayers?.length &&
-    project.manuscript === sampleManuscript
-  );
-}
-/**
- * First-run onboarding: show the quick-start checklist for a new, untouched
- * project until the user dismisses it. Gated off on narrow screens, where the
- * rail and the Content entry carry the guidance instead.
- */
-function shouldAutoShowGuide(project: Project): boolean {
-  if (typeof window === "undefined" || window.innerWidth < 900) return false;
-  try {
-    if (window.localStorage.getItem(GUIDE_DISMISSED_KEY)) return false;
-  } catch {
-    return false;
-  }
-  return isUntouchedProject(project);
-}
 export default function EditorPage() {
   const [project, setProject] = useState<Project>(
     () => readProjects()[0] || createProject(),

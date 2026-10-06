@@ -53,7 +53,7 @@ export function EditorArtboard({
   selected: FieldId | null;
   selectedLayer: string | null;
   drawing: FieldId | null;
-  onSelectLayer: (id: string) => void;
+  onSelectLayer: (id: string | null) => void;
   onMoveLayer: (id: string, dx: number, dy: number) => void;
   onLayerBox: (id: string, box: DesignBox) => void;
   onSelectField: (id: FieldId) => void;

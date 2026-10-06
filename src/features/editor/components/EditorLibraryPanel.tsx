@@ -263,7 +263,10 @@ export function EditorLibraryPanel(props: LibraryProps) {
           onCreate={createFromCurrent}
           onMessage={onMessage}
           selectedLayer={selectedLayer}
-          onSelectLayer={onSelectLayer}
+          onSelectLayer={(id) => {
+            setSelectedLayer(id);
+            setSelected(null);
+          }}
         />
       )}
       {nav === "presentation" && (
