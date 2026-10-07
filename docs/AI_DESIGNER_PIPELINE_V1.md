@@ -166,3 +166,26 @@ Every generated report stores complete generation provenance:
 2. **Interactive Critic Feedback in Editor:** Expose visual critic warnings and bounded one-click fixes in the live editor sidebar.
 3. **Multi-Column Auto-Balancing:** Dynamic two-column height equalization for uneven text blocks.
 4. **Export Engine Hardening:** Native vector PDF export from `DesignSpec` rather than rasterized canvas exports.
+
+---
+
+## 6. Phase 4 integration — Reference Design Intelligence v1
+
+`runAiDesignerPipeline(manuscript, { referenceProfile })` accepts an optional
+`ReferenceDesignProfile`. Before Stage 2, the base family is resolved through
+`resolveReferenceFamily`, which chooses one of four usage modes:
+
+- `none` — no reference.
+- `reference_derived_template` — a validated reference-derived family (≥ 3
+  confidently observed layouts) replaces the base family.
+- `reference_guided_tokens` — the standard family is re-skinned with
+  reference-derived colors/fonts (geometry unchanged).
+- `reference_low_confidence_fallback` — the reference is too weak; the standard
+  family is used unchanged.
+
+All downstream stages (DesignPlan validation, Exact Copy coverage, fit repair,
+continuation, quality loop, projection fidelity, trust gate) run unchanged. The
+generated DesignSpec records `referenceProfileId`, `referenceSourceType`,
+`referenceConfidence`, and `referenceUsageMode`; the result includes a
+`ReferenceUsageReport` with a heuristic `referenceSimilarity`. A reference never
+rewrites approved copy and is never presented as design reconstruction.

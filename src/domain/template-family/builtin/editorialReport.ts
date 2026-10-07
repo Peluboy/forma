@@ -450,6 +450,7 @@ export const FORMA_EDITORIAL_REPORT: TemplateFamily = {
       name: "Text Dominant Article",
       role: "content",
       fallbackLayouts: ["two-column-body"],
+      compatibleAlternatives: ["two-column-body", "heading-image-body"],
       slots: [
         {
           id: "heading",
@@ -533,6 +534,7 @@ export const FORMA_EDITORIAL_REPORT: TemplateFamily = {
       name: "Heading, Feature Image & Body",
       role: "content",
       fallbackLayouts: ["heading-body", "two-column-body"],
+      compatibleAlternatives: ["heading-body", "two-column-body"],
       slots: [
         {
           id: "heading",
@@ -640,6 +642,7 @@ export const FORMA_EDITORIAL_REPORT: TemplateFamily = {
       name: "Two-Column Editorial",
       role: "content",
       fallbackLayouts: ["heading-body"],
+      compatibleAlternatives: ["heading-body", "heading-image-body"],
       slots: [
         {
           id: "heading",
@@ -769,6 +772,7 @@ export const FORMA_EDITORIAL_REPORT: TemplateFamily = {
       name: "Three Key Statistics",
       role: "stats",
       fallbackLayouts: ["four-stat", "heading-body"],
+      compatibleAlternatives: ["four-stat"],
       slots: [
         {
           id: "heading",
@@ -1009,6 +1013,7 @@ export const FORMA_EDITORIAL_REPORT: TemplateFamily = {
       name: "Four Statistics Grid",
       role: "stats",
       fallbackLayouts: ["three-stat", "heading-body"],
+      compatibleAlternatives: ["three-stat"],
       slots: [
         {
           id: "heading",

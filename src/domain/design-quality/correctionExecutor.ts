@@ -1,4 +1,5 @@
 import type { ContentGraph } from "../content/types.js";
+import type { SlotAssignment } from "../design-plan/types.js";
 import { validateDesignSpecCopyCoverage } from "../design-spec/copyCoverage.js";
 import type {
   DesignElement,
@@ -7,7 +8,15 @@ import type {
 } from "../design-spec/types.js";
 import { validateDesignSpec } from "../design-spec/validation.js";
 import { evaluateDocumentFit } from "../layout-fit/engine.js";
-import type { TemplateFamily } from "../template-family/types.js";
+import { instantiatePageFromLayout } from "../template-family/resolver.js";
+import {
+  findCompatibleLayouts,
+  remapLayoutSlots,
+} from "../template-family/slotRemapping.js";
+import type {
+  TemplateFamily,
+  TemplateLayout,
+} from "../template-family/types.js";
 import type { BoundedCorrectionActionV2 } from "./qualityTypes.js";
 
 export interface CorrectionOutcome {
@@ -135,12 +144,189 @@ function newCollision(
   );
 }
 
+function reconstructAssignmentsFromPage(
+  page: DesignPage,
+  layout: TemplateLayout,
+  graph: ContentGraph,
+): SlotAssignment[] {
+  const assignments: SlotAssignment[] = [];
+  const baseElementsById = new Map(layout.baseElements.map((b) => [b.id, b]));
+
+  const nodeSpans = new Map<string, Set<string>>();
+  function walkNode(node: any) {
+    nodeSpans.set(node.id, new Set(node.sourceSpanIds || []));
+    node.children?.forEach(walkNode);
+  }
+  graph.nodes.forEach(walkNode);
+
+  for (const el of page.elements) {
+    if (!el.sourceSpanIds || el.sourceSpanIds.length === 0) continue;
+    const baseId = el.id.startsWith(`${page.id}:`)
+      ? el.id.slice(page.id.length + 1)
+      : el.id;
+    const baseEl = baseElementsById.get(baseId);
+    let slotId = baseEl?.slotId;
+
+    if (!slotId) {
+      const matchingSlot = layout.slots.find(
+        (s) =>
+          (el.metadata?.semanticRole && s.role === el.metadata.semanticRole) ||
+          (el.type === "text" && s.role === "body") ||
+          (el.type === "table" && s.role === "table"),
+      );
+      slotId = matchingSlot?.id || layout.slots[0]?.id || "body";
+    }
+
+    const matchedNodeIds: string[] = [];
+    const elSpanSet = new Set(el.sourceSpanIds);
+    for (const [nodeId, spans] of nodeSpans) {
+      for (const s of spans) {
+        if (elSpanSet.has(s) && !matchedNodeIds.includes(nodeId)) {
+          matchedNodeIds.push(nodeId);
+          break;
+        }
+      }
+    }
+
+    const existing = assignments.find((a) => a.slotId === slotId);
+    if (existing) {
+      for (const nId of matchedNodeIds) {
+        if (!existing.contentNodeIds.includes(nId))
+          existing.contentNodeIds.push(nId);
+      }
+      for (const sId of el.sourceSpanIds) {
+        if (!existing.sourceSpanIds.includes(sId))
+          existing.sourceSpanIds.push(sId);
+      }
+    } else {
+      assignments.push({
+        slotId,
+        contentNodeIds: matchedNodeIds,
+        sourceSpanIds: [...el.sourceSpanIds],
+      });
+    }
+  }
+
+  return assignments;
+}
+
+function applyLayoutSwap(
+  spec: DesignSpec,
+  action: BoundedCorrectionActionV2,
+  family: TemplateFamily,
+  graph: ContentGraph,
+): CorrectionOutcome {
+  const pageIndex = spec.pages.findIndex((page) => page.id === action.pageId);
+  if (pageIndex < 0) {
+    return { spec, applied: false, reason: "Page target missing." };
+  }
+  const page = spec.pages[pageIndex];
+  const currentLayoutId =
+    (page.metadata?.layoutId as string) ||
+    family.layouts.find((l) => l.role === page.role)?.id ||
+    family.layouts[0].id;
+  const currentLayout =
+    family.layouts.find((l) => l.id === currentLayoutId) || family.layouts[0];
+
+  const targetLayoutId =
+    action.params?.alternateLayoutId ||
+    action.params?.styleRef ||
+    currentLayout.compatibleAlternatives?.[0] ||
+    currentLayout.fallbackLayouts?.[0] ||
+    findCompatibleLayouts(currentLayout, family)[0]?.id;
+
+  if (!targetLayoutId || targetLayoutId === currentLayout.id) {
+    return {
+      spec,
+      applied: false,
+      reason: "No alternative compatible layout available.",
+    };
+  }
+
+  const targetLayout = family.layouts.find((l) => l.id === targetLayoutId);
+  if (!targetLayout) {
+    return {
+      spec,
+      applied: false,
+      reason: `Target layout '${targetLayoutId}' not found in family.`,
+    };
+  }
+
+  const currentAssignments = reconstructAssignmentsFromPage(
+    page,
+    currentLayout,
+    graph,
+  );
+  const remapResult = remapLayoutSlots(
+    currentLayout,
+    targetLayout,
+    currentAssignments,
+    graph,
+  );
+  if (!remapResult.valid) {
+    return {
+      spec,
+      applied: false,
+      reason: remapResult.error || "Slot remapping failed.",
+    };
+  }
+
+  const newPage = instantiatePageFromLayout(
+    targetLayout,
+    page.id,
+    remapResult.assignments,
+    family,
+    graph,
+    page.role,
+    typeof page.metadata?.order === "number"
+      ? page.metadata.order
+      : pageIndex + 1,
+    page.metadata?.rationale as string | undefined,
+  );
+
+  const candidate: DesignSpec = {
+    ...spec,
+    pages: spec.pages.map((p, idx) => (idx === pageIndex ? newPage : p)),
+  };
+
+  if (!validateDesignSpec(candidate).valid) {
+    return {
+      spec,
+      applied: false,
+      reason: "DesignSpec validation failed after layout swap.",
+    };
+  }
+  if (!validateDesignSpecCopyCoverage(graph, candidate).valid) {
+    return {
+      spec,
+      applied: false,
+      reason: "Exact Copy validation failed after layout swap.",
+    };
+  }
+  if (!evaluateDocumentFit(candidate, family).valid) {
+    return {
+      spec,
+      applied: false,
+      reason: "Fit validation failed after layout swap.",
+    };
+  }
+
+  return { spec: candidate, applied: true };
+}
+
 export function applyQualityCorrection(
   spec: DesignSpec,
   action: BoundedCorrectionActionV2,
   family: TemplateFamily,
   graph: ContentGraph,
 ): CorrectionOutcome {
+  if (
+    action.type === "swap_compatible_layout" ||
+    action.type === "change_layout_variant"
+  ) {
+    return applyLayoutSwap(spec, action, family, graph);
+  }
+
   const pageIndex = spec.pages.findIndex((page) => page.id === action.pageId);
   if (pageIndex < 0 || !action.elementId)
     return { spec, applied: false, reason: "Page or element target missing." };

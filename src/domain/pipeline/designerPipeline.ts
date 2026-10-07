@@ -42,6 +42,17 @@ import type {
   IterationReport,
   VisualCriticReport,
 } from "../visual-critic/types.js";
+import {
+  resolveReferenceFamily,
+  computeReferenceSimilarity,
+} from "../reference-design/index.js";
+import type {
+  ReferenceDesignProfile,
+  ReferenceSimilarityReport,
+  ReferenceSourceType,
+  ReferenceTemplateGateResult,
+  ReferenceUsageMode,
+} from "../reference-design/types.js";
 
 export type PipelineStage =
   | "understanding_content"
@@ -88,6 +99,18 @@ export interface DesignerPipelineOptions {
   /** Allow AI visual issues to influence the planner (feature flag). */
   enableAiCritic?: boolean;
   aiVisualIssues?: AiVisualIssueInput[];
+  /** Optional reference design intelligence guiding styling or layout. */
+  referenceProfile?: ReferenceDesignProfile | null;
+}
+
+export interface ReferenceUsageReport {
+  profileId: string | null;
+  sourceType: ReferenceSourceType | null;
+  confidence: number | null;
+  usageMode: ReferenceUsageMode;
+  gate: ReferenceTemplateGateResult | null;
+  similarity: ReferenceSimilarityReport | null;
+  reasons: string[];
 }
 
 export interface AiCriticInfluenceReport {
@@ -118,6 +141,7 @@ export interface DesignerPipelineResult {
   exportConsistency: ReturnType<typeof checkEditorExportConsistency>;
   deliverableQuality: DeliverableQualityAssessment;
   aiCritic: AiCriticInfluenceReport;
+  reference: ReferenceUsageReport;
   errors: string[];
 }
 
@@ -125,7 +149,12 @@ export async function runAiDesignerPipeline(
   manuscript: string,
   options: DesignerPipelineOptions = {},
 ): Promise<DesignerPipelineResult> {
-  const family = options.family || FORMA_EDITORIAL_REPORT;
+  const baseFamily = options.family || FORMA_EDITORIAL_REPORT;
+  const referenceResolution = resolveReferenceFamily(
+    options.referenceProfile,
+    baseFamily,
+  );
+  const family = referenceResolution.family;
   const errors: string[] = [];
   const contentHash = stableTextHash(manuscript);
   const notify = (
@@ -293,6 +322,27 @@ export async function runAiDesignerPipeline(
     100,
   );
 
+  const referenceSimilarity = options.referenceProfile
+    ? computeReferenceSimilarity(options.referenceProfile, finalSpec)
+    : null;
+  const reference: ReferenceUsageReport = {
+    profileId: options.referenceProfile?.id ?? null,
+    sourceType: options.referenceProfile?.source?.type ?? null,
+    confidence: options.referenceProfile?.confidence.overall ?? null,
+    usageMode: referenceResolution.mode,
+    gate: options.referenceProfile ? referenceResolution.gate : null,
+    similarity: referenceSimilarity,
+    reasons: referenceResolution.reasons,
+  };
+  if (options.referenceProfile)
+    finalSpec.metadata = {
+      ...finalSpec.metadata,
+      referenceProfileId: options.referenceProfile.id,
+      referenceSourceType: options.referenceProfile.source.type,
+      referenceConfidence: options.referenceProfile.confidence.overall,
+      referenceUsageMode: referenceResolution.mode,
+    };
+
   const initialScore = quality.report.initialScore;
   const finalScore = quality.report.finalScore;
   const correctionsCount = quality.report.steps.reduce(
@@ -341,6 +391,7 @@ export async function runAiDesignerPipeline(
     exportConsistency,
     deliverableQuality,
     aiCritic,
+    reference,
     errors,
   };
 }

@@ -27,6 +27,8 @@ const SUPPORTED_ACTIONS = new Set<BoundedCorrectionActionV2["type"]>([
   "adjust_image_crop",
   "change_image_focal_point",
   "change_image_fit",
+  "swap_compatible_layout",
+  "change_layout_variant",
 ]);
 
 export interface CorrectionPlannerConfig {

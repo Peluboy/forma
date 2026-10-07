@@ -12,7 +12,12 @@ import { applyQualityCorrection } from "../src/domain/design-quality/correctionE
 import { runQualityLoop } from "../src/domain/design-quality/qualityLoop.js";
 import { getQualityPreset } from "../src/domain/design-quality/presets.js";
 import { repairPageFit } from "../src/domain/layout-fit/engine.js";
-import type { DesignPage } from "../src/domain/design-spec/types.js";
+import {
+  findCompatibleLayouts,
+  remapLayoutSlots,
+} from "../src/domain/template-family/slotRemapping.js";
+import { generateReviewInsights } from "../src/domain/design-quality/reviewInsights.js";
+import { parseHumanReviews } from "../src/domain/design-quality/humanReview.js";
 import sharp from "sharp";
 import { critiqueQualityImages } from "../server/qualityCritic.js";
 
@@ -268,4 +273,105 @@ test("vision critic rejects hallucinated page IDs and keeps output bounded", asy
     if (originalModel === undefined) delete process.env.GEMINI_VISION_MODEL;
     else process.env.GEMINI_VISION_MODEL = originalModel;
   }
+});
+
+test("remapLayoutSlots deterministically maps single-column to two-column layout preserving copy", () => {
+  const manuscript =
+    "# Executive Report\n\nAuthor: Forma Operations\n\n# Operational Review\n\nFirst paragraph detailing team delivery and milestones.\n\nSecond paragraph outlining upcoming rollout stages.";
+  const graph = contentGraphFromManuscript(manuscript);
+  const headingBodyLayout = family.layouts.find(
+    (l) => l.id === "heading-body",
+  )!;
+  const twoColLayout = family.layouts.find((l) => l.id === "two-column-body")!;
+
+  const plan = planDesignDeterministically(graph, family);
+  const contentPage =
+    plan.pages.find((p) => p.layoutId === "heading-body") ||
+    plan.pages[plan.pages.length - 1];
+  const currentAssignments = contentPage.assignments;
+
+  const remapResult = remapLayoutSlots(
+    headingBodyLayout,
+    twoColLayout,
+    currentAssignments,
+    graph,
+  );
+  assert.equal(remapResult.valid, true);
+  assert.ok(remapResult.assignments.length >= 2);
+
+  // Check that all source spans are preserved
+  const originalSpanIds = new Set(
+    currentAssignments.flatMap((a) => a.sourceSpanIds),
+  );
+  const remappedSpanIds = new Set(
+    remapResult.assignments.flatMap((a) => a.sourceSpanIds),
+  );
+  for (const sId of originalSpanIds) {
+    assert.ok(
+      remappedSpanIds.has(sId),
+      `Span ${sId} must be preserved in remapped assignments`,
+    );
+  }
+});
+
+test("applyQualityCorrection swaps compatible layout variant and preserves Exact Copy and Fit", () => {
+  const manuscript =
+    "# Executive Summary\n\nAuthor: Strategy Team\n\n# Regional Operations\n\nFirst paragraph of approved copy.\n\nSecond paragraph of approved copy.";
+  const { graph, spec } = makeReport(manuscript);
+  const targetPage =
+    spec.pages.find((p) => p.metadata?.layoutId === "heading-body") ||
+    spec.pages[spec.pages.length - 1];
+
+  const outcome = applyQualityCorrection(
+    spec,
+    {
+      type: "swap_compatible_layout",
+      pageId: targetPage.id,
+      confidence: "high",
+      rationale: "Switch to compatible two-column layout",
+      expectedImprovements: ["composition", "balance"],
+      params: { alternateLayoutId: "two-column-body" },
+    },
+    family,
+    graph,
+  );
+
+  assert.equal(outcome.applied, true);
+  const updatedPage = outcome.spec.pages.find((p) => p.id === targetPage.id);
+  assert.equal(updatedPage?.metadata?.layoutId, "two-column-body");
+  assert.equal(validateDesignSpecCopyCoverage(graph, outcome.spec).valid, true);
+});
+
+test("generateReviewInsights generates actionable rubric tuning recommendations from human reviews", () => {
+  const rawReviews = [
+    {
+      caseId: "case-1",
+      reviewer: "alex",
+      acceptable: true,
+      rating: 4,
+      verdict: "acceptable",
+      notes: "Clean layout, but text leading is slightly tight.",
+    },
+    {
+      caseId: "case-2",
+      reviewer: "taylor",
+      acceptable: false,
+      rating: 2,
+      verdict: "needs_redesign",
+      notes: "Severe whitespace crowding around the margins.",
+    },
+  ];
+
+  const reviews = parseHumanReviews(rawReviews);
+  const scores = [
+    { caseId: "case-1", heuristicScore: 82 },
+    { caseId: "case-2", heuristicScore: 88 }, // False positive: score 88 but rating 2
+  ];
+
+  const insights = generateReviewInsights(reviews, scores);
+  assert.equal(insights.totalReviews, 2);
+  assert.equal(insights.averageHumanRating, 3);
+  assert.ok(insights.complaintRankings.length > 0);
+  assert.ok(insights.rubricTuningSuggestions.length > 0);
+  assert.equal(insights.calibrationGaps.falsePositiveCount, 1);
 });

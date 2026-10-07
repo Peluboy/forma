@@ -83,3 +83,18 @@ Phase 2B significantly enhances the trust and delivery layer between DesignSpec 
 - **Group Hierarchy**: Nested groups are flattened into individually selectable elements.
 - **Cross-Page Rhythm AI**: Visual critique samples key pages but does not yet evaluate multi-page typographic rhythm across 20+ pages.
 - **Automated Layout Swaps**: Bounded corrections adjust scale, padding, and alignment; semantic layout re-assignment is not yet automated.
+
+---
+
+## Phase 4 — Reference Design Intelligence interplay
+
+Reference-derived output is scored by the same v2 rubric as any other document.
+Two rules matter when a reference is in play:
+
+- A reference-derived `TemplateFamily` is re-skinned from a validated built-in
+  family, so its geometry, slot grammar, and constraints are unchanged. Quality
+  never grants trust to a family that failed `validateTemplateFamily`.
+- The trust gate (`assessDeliverableQuality`) is unaffected by reference usage.
+  Projection fidelity remains the authority on whether the editable document
+  matches the approved design. Reference similarity is a **separate heuristic
+  signal** and is never folded into the quality score or the trust verdict.

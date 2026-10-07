@@ -16,6 +16,14 @@ import {
   type DesignerPipelineResult,
 } from "../../domain/pipeline/designerPipeline";
 import { FORMA_EDITORIAL_REPORT } from "../../domain/template-family/builtin/editorialReport";
+import {
+  referenceIntelligenceEnabled,
+  type ReferenceDesignProfile,
+} from "../../domain/reference-design/index";
+import {
+  analyzeImageReference,
+  type AnalysisProviderId,
+} from "./lib/referenceAnalysis";
 import { CheckCircle2, ExternalLink } from "lucide-react";
 import {
   readGuestBrand,
@@ -110,6 +118,13 @@ export default function CreatePage() {
   } | null>(null);
   const [pipelineResult, setPipelineResult] =
     useState<DesignerPipelineResult | null>(null);
+  const [referenceProfile, setReferenceProfile] =
+    useState<ReferenceDesignProfile | null>(null);
+  const [referenceBusy, setReferenceBusy] = useState(false);
+  const [referenceError, setReferenceError] = useState("");
+  const [useReferenceStyle, setUseReferenceStyle] = useState(true);
+  const [referenceProvider, setReferenceProvider] =
+    useState<AnalysisProviderId>("gemini");
   useEffect(() => {
     try {
       sessionStorage.removeItem(CREATE_DRAFT_KEY);
@@ -166,9 +181,31 @@ export default function CreatePage() {
       const result = await readReferenceFile(file);
       setReference(result.data);
       setReferenceName(result.name);
+      setReferenceProfile(null);
+      setReferenceError("");
       setConcepts([]);
     } catch (cause) {
       setError((cause as Error).message);
+    }
+  }
+  async function analyzeReferenceStyle() {
+    if (!reference) return;
+    setReferenceBusy(true);
+    setReferenceError("");
+    try {
+      const outcome = await analyzeImageReference({
+        image: reference,
+        provider: referenceProvider,
+      });
+      setReferenceProfile(outcome.profile);
+      if (outcome.usedFallback)
+        setReferenceError(
+          "Reference analysis was unavailable; the standard family will be used.",
+        );
+    } catch (cause) {
+      setReferenceError((cause as Error).message);
+    } finally {
+      setReferenceBusy(false);
     }
   }
   async function generate() {
@@ -201,6 +238,8 @@ export default function CreatePage() {
       try {
         const res = await runAiDesignerPipeline(manuscript, {
           family: FORMA_EDITORIAL_REPORT,
+          referenceProfile:
+            useReferenceStyle && referenceProfile ? referenceProfile : null,
           onProgress: (u) => {
             setPipelineProgress({
               stage: u.stage,
@@ -440,6 +479,117 @@ export default function CreatePage() {
                 />
               </label>
             </div>
+            {family === "document" &&
+              docMode === "report" &&
+              referenceIntelligenceEnabled() &&
+              reference && (
+                <div className="space-y-3 rounded-xl border border-border bg-bg-panel p-3.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-sm">
+                      Reference design intelligence
+                    </strong>
+                    <span className="text-[11px] text-text-tertiary">
+                      v1 · not reconstruction
+                    </span>
+                  </div>
+                  <p className="text-xs leading-5 text-text-secondary">
+                    Extract palette, typography and layout patterns to generate
+                    a new editable document in a similar visual language.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="text-xs text-text-secondary">
+                      Provider{" "}
+                      <select
+                        aria-label="Reference analysis provider"
+                        value={referenceProvider}
+                        onChange={(event) =>
+                          setReferenceProvider(
+                            event.target.value as AnalysisProviderId,
+                          )
+                        }
+                        className="h-9 rounded-lg border border-border-strong bg-bg-panel px-2 text-xs"
+                      >
+                        <option
+                          value="gemini"
+                          disabled={!session.capabilities?.analysis?.gemini}
+                        >
+                          Gemini vision
+                        </option>
+                        <option
+                          value="local"
+                          disabled={!session.capabilities?.analysis?.local}
+                        >
+                          Local OCR
+                        </option>
+                        <option
+                          value="openai"
+                          disabled={!session.capabilities?.analysis?.openai}
+                        >
+                          OpenAI vision
+                        </option>
+                      </select>
+                    </label>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={referenceBusy}
+                      onClick={() => void analyzeReferenceStyle()}
+                    >
+                      {referenceBusy ? "Analyzing…" : "Analyze reference"}
+                    </Button>
+                  </div>
+                  {referenceError && (
+                    <p role="alert" className="text-xs text-danger">
+                      {referenceError}
+                    </p>
+                  )}
+                  {referenceProfile && (
+                    <div className="space-y-2 text-xs text-text-secondary">
+                      <div className="flex flex-wrap gap-1.5">
+                        {referenceProfile.extractedTokens.colors
+                          .slice(0, 7)
+                          .map((color) => (
+                            <span
+                              key={color.id}
+                              className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5"
+                            >
+                              <span
+                                aria-hidden
+                                style={{ background: color.value }}
+                                className="inline-block h-3 w-3 rounded-sm border border-border"
+                              />
+                              {color.role}
+                            </span>
+                          ))}
+                      </div>
+                      <div>
+                        Tone: {referenceProfile.visualLanguage.tone} · Density:{" "}
+                        {referenceProfile.visualLanguage.density} · Images:{" "}
+                        {referenceProfile.visualLanguage.imageUsage} · Data:{" "}
+                        {referenceProfile.visualLanguage.dataUsage} ·
+                        Confidence:{" "}
+                        {Math.round(referenceProfile.confidence.overall * 100)}%
+                      </div>
+                      {referenceProfile.warnings.slice(0, 4).map((item) => (
+                        <div key={item.code} className="text-text-tertiary">
+                          ⚠ {item.message}
+                        </div>
+                      ))}
+                      <label className="flex items-center gap-2 text-text-primary">
+                        <input
+                          type="checkbox"
+                          checked={useReferenceStyle}
+                          onChange={(event) =>
+                            setUseReferenceStyle(event.target.checked)
+                          }
+                          className="accent-[var(--accent)]"
+                        />{" "}
+                        Use reference style for generation
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
             {reference && (
               <fieldset>
                 <legend className="mb-2 text-sm font-semibold">

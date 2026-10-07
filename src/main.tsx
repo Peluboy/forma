@@ -37,6 +37,9 @@ const AccountSettings = lazy(
   () => import("./features/account/AccountSettings"),
 );
 const PipelineDevPanel = lazy(() => import("./features/dev/PipelineDevPanel"));
+const ReferenceDevPanel = lazy(
+  () => import("./features/dev/ReferenceDevPanel"),
+);
 const path = location.pathname.replace(/\/$/, "") || "/";
 const query = new URLSearchParams(location.search);
 // Preserve payment and password-reset links issued by the previous release.
@@ -46,6 +49,8 @@ const screen = path.startsWith("/review/") ? (
   <ReviewPage token={path.split("/")[2]} />
 ) : path === "/dashboard" ? (
   <Dashboard />
+) : path === "/dev/reference" ? (
+  <ReferenceDevPanel />
 ) : path === "/dev/pipeline" || path === "/dev" ? (
   <PipelineDevPanel />
 ) : path === "/create" ? (

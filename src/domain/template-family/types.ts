@@ -127,6 +127,7 @@ export interface TemplateLayout {
   slots: TemplateSlot[];
   baseElements: TemplateElementDefinition[];
   fallbackLayouts?: string[]; // Compatible layouts for fit switching
+  compatibleAlternatives?: string[]; // Compatible layouts for smart variant switching
   constraints?: TemplateLayoutConstraints;
   metadata?: Record<string, unknown>;
 }

@@ -1,5 +1,37 @@
 # Delivery progress
 
+## October 7, 2026: Phase 4 — Reference Design Intelligence v1
+
+- **Audit-first**: `docs/REFERENCE_DESIGN_INTELLIGENCE_V1.md` records what reference support actually exists (raster overlay + prompt-level influence only), what is reusable, what must change, and what is deferred. PDF/PPTX parsing and editable reconstruction are explicitly **not** built.
+- **New domain module** `src/domain/reference-design/`: versioned `ReferenceDesignProfile` (`types.ts`), schema validation (`schema.ts`, `validation.ts`), confidence + warnings (`confidence.ts`), token extraction (`extractTokens.ts`), layout-pattern extraction (`extractLayoutPatterns.ts`), visual-language inference (`visualLanguage.ts`), a deterministic DesignSpec extractor (`extractFromDesignSpec.ts`), cautious image analysis with strict validation and a safe fallback (`imageAnalysis.ts`), reference→TemplateFamily conversion with a confidence gate (`profileToTemplateFamily.ts`), and a heuristic similarity report (`similarity.ts`).
+- **Deterministic DesignSpec extraction (high confidence)**: colors, typography scale, spacing, page roles, and layout patterns are read directly from structured geometry and labelled `observed`.
+- **Image analysis v1 (cautious)**: reuses the existing validated `/api/reference/analyze` vision provider, rejects impossible bounds / unknown types / oversized text / unsupported colors, and scales confidence with the provider's own region confidence. Provider failure produces a safe image-only fallback profile.
+- **Reference → template**: only confidently observed layouts (≥ 3, validated) produce a reference-derived `TemplateFamily`; otherwise Forma falls back to reference-guided tokens or the standard family. Gate statuses: `reference_template_ready`, `reference_guided_only`, `reference_low_confidence`, `reference_unusable`.
+- **Pipeline integration**: `runAiDesignerPipeline` accepts `referenceProfile`, records `referenceUsageMode`, profile id, source type, and confidence on the generated DesignSpec, and returns a `ReferenceUsageReport` with similarity. All existing gates (Exact Copy, fit, quality, projection fidelity, trust) still run.
+- **UI**: `/create` report flow gains a feature-flagged reference-style panel with an editable summary; new `/dev/reference` lab shows regions, tokens, patterns, visual language, confidence, warnings, the template candidate, generated pages, and similarity.
+- **Verification**: 17 new reference tests; `npm run benchmark:reference` runs 7 reference cases (1 template-ready, 4 guided, 2 low-confidence fallback) with 100% copy/fit pass and ~99% projection fidelity. Full suite, typecheck, lint, and build re-run below.
+
+## October 7, 2026: Phase 3 — Interactive Editor Polish, Smart Layout Variants, and Review Feedback Loop
+
+- **Interactive Canvas Controls & Editable Visual Blocks**:
+  - Implemented focal point reticle and selection chrome for images on the SVG document canvas (`DocumentCanvas.tsx`).
+  - Added full SVG chart rendering for bar, line, and pie charts with responsive coordinate mapping and legends.
+  - Added Image and Chart inspector in `DocumentPanel.tsx` and connected `patchDocumentDecoration` in `projectActions.ts`.
+- **Deterministic Slot Remapping & Smart Layout Variant Switching**:
+  - Implemented `remapLayoutSlots` (`slotRemapping.ts`) with slot role mapping and multi-column body redistribution preserving Exact Copy and SourceSpan hierarchy.
+  - Added `compatibleAlternatives` to `TemplateLayout` in `editorialReport.ts`.
+  - Added `swap_compatible_layout` and `change_layout_variant` support to `correctionPlanner.ts` and `correctionExecutor.ts`.
+- **Rich 1-Click Quality Fixes & Local Undo**:
+  - Enhanced `EditorQualityPanel.tsx` with one-click actions for body text enlargement, heading emphasis, and compatible layout switching.
+  - Added local snapshot state (`lastSnapshot`) providing one-click "Undo" to restore prior layout and text configurations.
+- **Human Review Insights & Rubric Calibration**:
+  - Created `src/domain/design-quality/reviewInsights.ts` and `scripts/generate-review-insights.ts` (`npm run review:insights`).
+  - Correlates human review complaints with deterministic rubric dimensions and provides automated rubric tuning recommendations.
+- **Benchmark & Fixture Expansion**:
+  - Added 5 new stress test fixtures (`stress-image-heavy`, `stress-chart-heavy`, `stress-stat-heavy`, `stress-text-heavy-layout-swap`, `stress-table-continuation`) to `qualityCases.ts`.
+  - Verified 27 benchmark fixtures achieving 97/100 average deliverable quality and 99.1% projection fidelity.
+- **Verification**: 108 unit tests passing across all domains, strict TypeScript compiler passing for client & server, and production build succeeded.
+
 ## October 5, 2026: Phase 2B — DesignSpec-to-Editor Fidelity, Continuation Pagination, and Human Calibration
 
 - **Adapter Fidelity & Structured Projection Pipeline**: Implemented formal `toFlowDocument.ts` projection pipeline with comprehensive fidelity model (`EditorProjectionFidelityReport`). Preserves shapes, rules, dividers, images with fit modes, structured chart blocks, and page background colors into the editable `FlowDocument` editor canvas.

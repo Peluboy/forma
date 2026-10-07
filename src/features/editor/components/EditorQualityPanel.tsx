@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Layers, RotateCcw, Sparkles, X } from "lucide-react";
 import type { Project } from "../../../domain/design/model.js";
 import { fromFlowDocument } from "../../../domain/design-spec/adapters/fromFlowDocument.js";
 import { evaluateDocumentQuality } from "../../../domain/design-quality/documentQuality.js";
@@ -9,7 +9,9 @@ import { contentGraphFromManuscript } from "../../../domain/content/contentGraph
 import { validateDesignSpecCopyCoverage } from "../../../domain/design-spec/copyCoverage.js";
 import { projectDesignSpecToFlowDocument } from "../../../domain/design-spec/adapters/toFlowDocument.js";
 import { assessDeliverableQuality } from "../../../domain/design-quality/trustGate.js";
+import { applyQualityCorrection } from "../../../domain/design-quality/correctionExecutor.js";
 import { FORMA_EDITORIAL_REPORT } from "../../../domain/template-family/builtin/editorialReport.js";
+import { findCompatibleLayouts } from "../../../domain/template-family/slotRemapping.js";
 
 interface Props {
   project: Project;
@@ -20,8 +22,12 @@ const issueTitles: Record<string, string> = {
   small_body_text: "Some text is too small",
   excessive_line_length: "Some text lines are too long",
   weak_hierarchy: "Headings need more emphasis",
+  heading_not_dominant: "Heading scale is insufficient",
   insufficient_whitespace: "Some elements are too close",
+  inconsistent_spacing: "Spacing between elements is uneven",
   orphaned_element: "An element may feel disconnected",
+  repeated_layout_pattern: "Repeated layout pattern detected",
+  page_too_similar_to_previous: "Page layout is identical to previous",
   brand_color_misuse: "A color differs from the template",
   off_brand_typography: "A font differs from the template",
   short_last_line: "A paragraph ends with a short line",
@@ -31,12 +37,12 @@ export function EditorQualityPanel({ project, onApply }: Props) {
   const [open, setOpen] = useState(false);
   const [fixMessage, setFixMessage] = useState("");
   const [showUnsupported, setShowUnsupported] = useState(false);
+  const [previousProject, setPreviousProject] = useState<Project | null>(null);
+
   const report = useMemo(() => {
     if (project.family !== "document" || !project.flow) return null;
     const { spec } = fromFlowDocument(project);
     const quality = evaluateDocumentQuality(spec, FORMA_EDITORIAL_REPORT);
-    // Re-project the derived spec so the panel can report projection fidelity
-    // and avoid presenting a DesignSpec score as delivered quality.
     const { fidelity } = projectDesignSpecToFlowDocument(
       spec,
       project.manuscript,
@@ -50,18 +56,46 @@ export function EditorQualityPanel({ project, onApply }: Props) {
       fitValid: evaluateDocumentFit(spec, FORMA_EDITORIAL_REPORT).valid,
       fidelity,
       deliverable: assessDeliverableQuality(quality.overallScore, fidelity),
+      spec,
     };
   }, [project]);
+
+  // Find compatible alternative layouts for the active page
+  const activePageAlternatives = useMemo(() => {
+    if (!report || !project.flow?.activePageId) return [];
+    const activePage = report.spec.pages.find(
+      (p) =>
+        p.id === project.flow?.activePageId ||
+        p.id === `${project.id}:${project.flow?.activePageId}`,
+    );
+    if (!activePage) return [];
+    const currentLayoutId =
+      (activePage.metadata?.layoutId as string) ||
+      FORMA_EDITORIAL_REPORT.layouts.find((l) => l.role === activePage.role)
+        ?.id ||
+      FORMA_EDITORIAL_REPORT.layouts[0].id;
+    const currentLayout =
+      FORMA_EDITORIAL_REPORT.layouts.find((l) => l.id === currentLayoutId) ||
+      FORMA_EDITORIAL_REPORT.layouts[0];
+    return findCompatibleLayouts(currentLayout, FORMA_EDITORIAL_REPORT);
+  }, [report, project]);
+
   if (!report || !project.flow) return null;
+
+  const undoLastFix = () => {
+    if (!previousProject) return;
+    onApply(previousProject);
+    setPreviousProject(null);
+    setFixMessage("Reverted last change.");
+  };
 
   const raiseSmallText = (elementId: string) => {
     if (!project.flow) return;
-    const { spec } = fromFlowDocument(project);
-    const source = spec.pages
+    const source = report.spec.pages
       .flatMap((page) => page.elements)
       .find((element) => element.id === elementId);
     if (!source || source.type !== "text") return;
-    const candidate = { ...source, fontSize: Math.max(source.fontSize, 10) };
+    const candidate = { ...source, fontSize: Math.max(source.fontSize, 10.5) };
     if (measureTextElement(candidate).overflow) {
       setFixMessage(
         "A larger size will not fit this frame. Adjust the layout first.",
@@ -75,9 +109,76 @@ export function EditorQualityPanel({ project, onApply }: Props) {
     const page = next.flow?.pages.find((item) => item.id === pageId);
     const frame = page?.elements.find((item) => item.id === frameId);
     if (!frame || frame.type !== "text") return;
+    setPreviousProject(structuredClone(project));
     frame.fontSize = candidate.fontSize;
     onApply(next);
     setFixMessage("Text size updated. Your words are unchanged.");
+  };
+
+  const strengthenHeading = (elementId: string) => {
+    if (!project.flow) return;
+    const source = report.spec.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.id === elementId);
+    if (!source || source.type !== "text") return;
+    const candidate = {
+      ...source,
+      fontSize: source.fontSize + 2,
+      fontWeight: 700,
+    };
+    if (measureTextElement(candidate).overflow) {
+      setFixMessage("Heading cannot be enlarged without overflowing frame.");
+      return;
+    }
+    const parts = elementId.split(":");
+    const pageId = parts[1];
+    const frameId = parts.slice(2).join(":");
+    const next = structuredClone(project);
+    const page = next.flow?.pages.find((item) => item.id === pageId);
+    const frame = page?.elements.find((item) => item.id === frameId);
+    if (!frame || frame.type !== "text") return;
+    setPreviousProject(structuredClone(project));
+    frame.fontSize = candidate.fontSize;
+    frame.fontWeight = candidate.fontWeight;
+    onApply(next);
+    setFixMessage("Heading emphasis strengthened.");
+  };
+
+  const swapLayoutVariant = (targetLayoutId: string) => {
+    if (!project.flow) return;
+    const activePageId = project.flow.activePageId;
+    const fullPageId =
+      report.spec.pages.find(
+        (p) =>
+          p.id === activePageId || p.id === `${project.id}:${activePageId}`,
+      )?.id || report.spec.pages[0]?.id;
+
+    const graph = contentGraphFromManuscript(project.manuscript);
+    const outcome = applyQualityCorrection(
+      report.spec,
+      {
+        type: "swap_compatible_layout",
+        pageId: fullPageId,
+        confidence: "high",
+        rationale: "Switch to compatible layout variant",
+        expectedImprovements: ["composition", "balance"],
+        params: { alternateLayoutId: targetLayoutId },
+      },
+      FORMA_EDITORIAL_REPORT,
+      graph,
+    );
+
+    if (outcome.applied) {
+      const { project: projected } = projectDesignSpecToFlowDocument(
+        outcome.spec,
+        project.manuscript,
+      );
+      setPreviousProject(structuredClone(project));
+      onApply({ ...project, flow: projected.flow });
+      setFixMessage("Switched to compatible layout. Copy remains exact.");
+    } else {
+      setFixMessage(outcome.reason || "Could not switch layout variant.");
+    }
   };
 
   const unsupportedOrLostCount =
@@ -90,7 +191,7 @@ export function EditorQualityPanel({ project, onApply }: Props) {
     : "text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/30";
 
   return (
-    <div className="absolute bottom-5 right-5 z-40 max-w-[340px] rounded-xl border border-slate-300 bg-white p-3.5 text-slate-900 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+    <div className="absolute bottom-5 right-5 z-40 max-w-[360px] rounded-xl border border-slate-300 bg-white p-3.5 text-slate-900 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
       {!open ? (
         <button
           type="button"
@@ -241,29 +342,43 @@ export function EditorQualityPanel({ project, onApply }: Props) {
             </div>
           )}
 
-          {/* Page & Rhythm Details */}
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800 pt-2 flex justify-between">
-            <span>
-              Current page:{" "}
-              <strong className="text-slate-700 dark:text-slate-300">
-                {report.pageScores.find(
-                  (page) =>
-                    page.pageId ===
-                    `${project.id}:${project.flow?.activePageId}`,
-                )?.score.overall ?? report.overallScore}
-                /100
-              </strong>
-            </span>
-            <span>Rhythm: {report.rhythmReport.score}/100</span>
-          </div>
+          {/* Smart Layout Variant Switcher */}
+          {activePageAlternatives.length > 0 && (
+            <div className="rounded-lg border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20 p-2.5 text-xs space-y-2">
+              <div className="flex items-center gap-1.5 font-medium text-indigo-900 dark:text-indigo-200 text-[11px]">
+                <Layers size={13} />
+                <span>Compatible Layout Alternatives</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {activePageAlternatives.map((alt) => (
+                  <button
+                    key={alt.id}
+                    type="button"
+                    onClick={() => swapLayoutVariant(alt.id)}
+                    className="px-2 py-1 text-[11px] font-medium rounded bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
+                  >
+                    Switch to {alt.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
+          {/* Feedback & Undo Status */}
           {fixMessage && (
-            <p
-              role="status"
-              className="text-xs text-blue-600 dark:text-blue-400"
-            >
-              {fixMessage}
-            </p>
+            <div className="flex items-center justify-between gap-2 rounded bg-blue-50 dark:bg-blue-950/30 p-2 text-xs text-blue-700 dark:text-blue-300">
+              <span className="leading-snug">{fixMessage}</span>
+              {previousProject && (
+                <button
+                  type="button"
+                  onClick={undoLastFix}
+                  className="flex items-center gap-1 font-semibold text-blue-600 dark:text-blue-400 hover:underline shrink-0"
+                >
+                  <RotateCcw size={12} />
+                  Undo
+                </button>
+              )}
+            </div>
           )}
 
           {/* Heuristic Issues & Guided Actions */}
@@ -275,7 +390,7 @@ export function EditorQualityPanel({ project, onApply }: Props) {
               {report.aggregateIssues.slice(0, 5).map((issue) => (
                 <div
                   key={issue.id}
-                  className="rounded-lg bg-slate-100 p-2 text-xs dark:bg-slate-800"
+                  className="rounded-lg bg-slate-100 p-2 text-xs dark:bg-slate-800 flex items-center justify-between gap-2"
                 >
                   <span className="font-medium">
                     {issueTitles[issue.type] ?? issue.type.replaceAll("_", " ")}
@@ -286,10 +401,25 @@ export function EditorQualityPanel({ project, onApply }: Props) {
                     issue.elementIds?.[0] && (
                       <button
                         type="button"
-                        className="mt-1 block font-semibold text-blue-600 dark:text-blue-400"
+                        className="font-semibold text-blue-600 dark:text-blue-400 hover:underline shrink-0 flex items-center gap-1"
                         onClick={() => raiseSmallText(issue.elementIds![0])}
                       >
-                        Increase safely
+                        <Sparkles size={12} />
+                        Enlarge
+                      </button>
+                    )}
+                  {(issue.type === "weak_hierarchy" ||
+                    issue.type === "heading_not_dominant") &&
+                    report.copyValid &&
+                    report.fitValid &&
+                    issue.elementIds?.[0] && (
+                      <button
+                        type="button"
+                        className="font-semibold text-blue-600 dark:text-blue-400 hover:underline shrink-0 flex items-center gap-1"
+                        onClick={() => strengthenHeading(issue.elementIds![0])}
+                      >
+                        <Sparkles size={12} />
+                        Emphasize
                       </button>
                     )}
                 </div>

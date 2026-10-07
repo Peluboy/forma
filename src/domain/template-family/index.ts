@@ -1,6 +1,7 @@
 export * from "./types.js";
 export * from "./validation.js";
 export * from "./resolver.js";
+export * from "./slotRemapping.js";
 export * from "./builtin/editorialReport.js";
 
 import { FORMA_EDITORIAL_REPORT } from "./builtin/editorialReport.js";
