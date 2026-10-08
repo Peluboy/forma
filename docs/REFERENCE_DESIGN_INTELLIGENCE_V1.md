@@ -180,3 +180,11 @@ quality score.
 See also: [REFERENCE_PROFILE_SCHEMA.md](REFERENCE_PROFILE_SCHEMA.md),
 [REFERENCE_TO_TEMPLATE_FAMILY.md](REFERENCE_TO_TEMPLATE_FAMILY.md),
 [REFERENCE_SIMILARITY_V1.md](REFERENCE_SIMILARITY_V1.md).
+
+## Phase 5 update
+
+Reference-derived candidates now flow into the Template Authoring + Approval
+System as `candidate` records (`/dev/reference` → Send candidate). Derived
+families are pruned of dangling alternative/fallback references so they pass
+Template Family validation v2. See
+[TEMPLATE_AUTHORING_PHASE_5.md](TEMPLATE_AUTHORING_PHASE_5.md).

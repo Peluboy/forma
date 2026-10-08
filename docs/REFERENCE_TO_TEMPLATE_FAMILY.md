@@ -69,3 +69,13 @@ family that fails the gate is **never** returned.
   all keep working.
 - If a manuscript needs a layout the reference does not support, generation may
   fall back or fail visibly — it never silently invents layouts.
+
+## Phase 5 (Template Authoring + Approval)
+
+- A derived family is pruned before use: `compatibleAlternatives`,
+  `fallbackLayouts`, and `varietyRules` that reference dropped layouts are
+  removed, so the resulting family passes Template Family validation v2.
+- `ReferenceDevPanel` can **Send candidate to Template Authoring**, saving the
+  derived family as a `candidate` record. It is not usable in `/create` until a
+  reviewer approves its layouts.
+- See [TEMPLATE_AUTHORING_PHASE_5.md](TEMPLATE_AUTHORING_PHASE_5.md).

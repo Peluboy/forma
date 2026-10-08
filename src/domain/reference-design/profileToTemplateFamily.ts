@@ -132,8 +132,26 @@ function selectLayouts(
 ): TemplateLayout[] {
   const supportedSet = new Set(supported);
   const selected = base.layouts.filter((layout) => supportedSet.has(layout.id));
-  // A reference-cover usually exists; include the base cover when supported.
-  return selected;
+  // References to layouts that were dropped would break resolution, so prune
+  // dangling compatible alternatives and fallbacks from the derived family.
+  const selectedIds = new Set(selected.map((layout) => layout.id));
+  return selected.map((layout) => ({
+    ...layout,
+    ...(layout.compatibleAlternatives
+      ? {
+          compatibleAlternatives: layout.compatibleAlternatives.filter((id) =>
+            selectedIds.has(id),
+          ),
+        }
+      : {}),
+    ...(layout.fallbackLayouts
+      ? {
+          fallbackLayouts: layout.fallbackLayouts.filter((id) =>
+            selectedIds.has(id),
+          ),
+        }
+      : {}),
+  }));
 }
 
 /**
@@ -188,13 +206,22 @@ export function profileToTemplateFamily(
   }
 
   const styled = applyReferenceTokensToFamily(base, profile);
+  const selectedLayouts = selectLayouts(styled, supported);
+  const selectedIds = new Set(selectedLayouts.map((layout) => layout.id));
+  const varietyRules = Object.fromEntries(
+    Object.entries(styled.varietyRules ?? {}).filter(([layoutId]) =>
+      selectedIds.has(layoutId),
+    ),
+  );
   const derived: TemplateFamily = {
     ...styled,
     id: `reference-derived-${profile.id}`,
     name: `${base.name} — Reference-derived`,
     description:
       "A limited template family derived from an analysed reference design. Not a reproduction of the source.",
-    layouts: selectLayouts(styled, supported),
+    layouts: selectedLayouts,
+    varietyRules,
+
     metadata: {
       ...styled.metadata,
       referenceDerived: true,

@@ -681,6 +681,59 @@ export async function createApp(
       next(e);
     }
   });
+  app.get("/api/template-families", auth, async (_req, res, next) => {
+    try {
+      const { isTemplateFamilyRecord } =
+        await import("../src/domain/template-authoring/index.js");
+      const rows: RecordRow[] = await res.locals.store.list(
+        res.locals.user.id,
+        "template_family",
+      );
+      res.json({
+        templateFamilies: rows
+          .map((r) => ({ ...r.data, ownerId: r.owner_id }))
+          .filter(isTemplateFamilyRecord),
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+  app.put("/api/template-families/:id", auth, async (req, res, next) => {
+    try {
+      const { isTemplateFamilyRecord } =
+        await import("../src/domain/template-authoring/index.js");
+      const record = req.body?.record ?? req.body;
+      if (!isTemplateFamilyRecord(record) || record.id !== req.params.id)
+        throw new ApiError(400, "Invalid template family record");
+      const old = await res.locals.store.get(
+        res.locals.user.id,
+        "template_family",
+        record.id,
+      );
+      const row = await res.locals.store.save(
+        res.locals.user.id,
+        "template_family",
+        record.id,
+        { ...record, ownerId: res.locals.user.id },
+        old?.version || 0,
+      );
+      res.json({ record: row.data, version: row.version });
+    } catch (e) {
+      next(e);
+    }
+  });
+  app.delete("/api/template-families/:id", auth, async (req, res, next) => {
+    try {
+      await res.locals.store.remove(
+        res.locals.user.id,
+        "template_family",
+        req.params.id,
+      );
+      res.json({ ok: true });
+    } catch (e) {
+      next(e);
+    }
+  });
   app.get("/api/skills", auth, async (_req, res, next) => {
     try {
       const { isSkillManifest, EVENT_CAMPAIGN_SKILL } =

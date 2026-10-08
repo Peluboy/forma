@@ -23,6 +23,10 @@ import {
 } from "../../domain/reference-design/index.js";
 import { runAiDesignerPipeline } from "../../domain/pipeline/designerPipeline.js";
 import type { DesignerPipelineResult } from "../../domain/pipeline/designerPipeline.js";
+import {
+  createTemplateFamilyRecord,
+  LocalStorageTemplateRecordStore,
+} from "../../domain/template-authoring/index.js";
 import { CORPORATE_REPORT_MANUSCRIPT } from "../../../tests/fixtures/corporateReportManuscript.js";
 import {
   analyzeImageReference,
@@ -51,6 +55,7 @@ export default function ReferenceDevPanel() {
   const [accentColor, setAccentColor] = useState("#2563eb");
   const [tone, setTone] = useState("");
   const [density, setDensity] = useState("");
+  const [authoringNotice, setAuthoringNotice] = useState("");
 
   function applyCorrections() {
     if (!profile) return;
@@ -132,6 +137,36 @@ export default function ReferenceDevPanel() {
     }
   }
 
+  function sendCandidateToAuthoring() {
+    if (!profile) return;
+    const resolution = resolveReferenceFamily(profile, FORMA_EDITORIAL_REPORT);
+    if (!resolution.derivedFamily) {
+      setAuthoringNotice(
+        `Not ready for authoring (${resolution.gate.status}): ${resolution.reasons.join(" ")}`,
+      );
+      return;
+    }
+    try {
+      const record = createTemplateFamilyRecord({
+        family: resolution.derivedFamily,
+        source: "reference_derived",
+        name: `${resolution.derivedFamily.name} candidate`,
+        reference: {
+          profileId: profile.id,
+          sourceType: profile.source.type,
+          confidence: profile.confidence.overall,
+          usageMode: "reference_derived_template",
+        },
+      });
+      new LocalStorageTemplateRecordStore().save(record);
+      setAuthoringNotice(
+        `Saved candidate "${record.name}" (${record.status}). Open the Template Authoring Lab to review and approve it before it can be used in /create.`,
+      );
+    } catch (cause) {
+      setAuthoringNotice((cause as Error).message);
+    }
+  }
+
   const gate = profile
     ? resolveReferenceFamily(profile, FORMA_EDITORIAL_REPORT)
     : null;
@@ -159,6 +194,12 @@ export default function ReferenceDevPanel() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <a
+            href="/dev/templates"
+            className="text-sm text-slate-400 hover:text-white"
+          >
+            Template Lab
+          </a>
           <Button
             variant="primary"
             size="sm"
@@ -522,6 +563,38 @@ export default function ReferenceDevPanel() {
                         {gate.gate.layoutIds.join(", ") || "None"}
                       </p>
                     </Section>
+                    {gate.derivedFamily ? (
+                      <Section title="Send to Template Authoring (Part Q)">
+                        <p className="text-xs text-slate-400">
+                          Save this derived family as a candidate record. It is
+                          not usable until a reviewer approves its layouts.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={sendCandidateToAuthoring}
+                          className="mt-2 rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-500"
+                        >
+                          Send candidate to Template Authoring
+                        </button>
+                        {authoringNotice && (
+                          <p className="mt-2 text-xs text-emerald-300">
+                            {authoringNotice}
+                          </p>
+                        )}
+                      </Section>
+                    ) : (
+                      <Section title="Why not ready for authoring">
+                        <p className="text-xs text-amber-300">
+                          {gate.gate.reasons.join(" ")}
+                        </p>
+                        {authoringNotice && (
+                          <p className="mt-2 text-xs text-amber-300">
+                            {authoringNotice}
+                          </p>
+                        )}
+                      </Section>
+                    )}
+
                     {gate.derivedFamily ? (
                       <Section title="Reference-derived TemplateFamily JSON">
                         <pre className="max-h-80 overflow-auto rounded bg-slate-950 p-3 font-mono text-[11px] text-slate-300">

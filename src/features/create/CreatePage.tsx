@@ -21,6 +21,12 @@ import {
   type ReferenceDesignProfile,
 } from "../../domain/reference-design/index";
 import {
+  templateAuthoringEnabled,
+  LocalStorageTemplateRecordStore,
+  applyApprovalToFamily,
+  type TemplateFamilyRecord,
+} from "../../domain/template-authoring/index";
+import {
   analyzeImageReference,
   type AnalysisProviderId,
 } from "./lib/referenceAnalysis";
@@ -125,6 +131,10 @@ export default function CreatePage() {
   const [useReferenceStyle, setUseReferenceStyle] = useState(true);
   const [referenceProvider, setReferenceProvider] =
     useState<AnalysisProviderId>("gemini");
+  const [templateRecords, setTemplateRecords] = useState<
+    TemplateFamilyRecord[]
+  >([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   useEffect(() => {
     try {
       sessionStorage.removeItem(CREATE_DRAFT_KEY);
@@ -132,6 +142,23 @@ export default function CreatePage() {
       /* private browser storage may be disabled */
     }
   }, []);
+  useEffect(() => {
+    if (!templateAuthoringEnabled()) return;
+    try {
+      const approved = new LocalStorageTemplateRecordStore()
+        .list()
+        .filter((record) => record.status === "approved");
+      setTemplateRecords(approved);
+    } catch {
+      setTemplateRecords([]);
+    }
+  }, []);
+  const selectedTemplate = useMemo(
+    () =>
+      templateRecords.find((record) => record.id === selectedTemplateId) ??
+      null,
+    [templateRecords, selectedTemplateId],
+  );
   useEffect(() => {
     if (!ready) return;
     if (!session.user) {
@@ -236,10 +263,33 @@ export default function CreatePage() {
       setConcepts([]);
       setPipelineResult(null);
       try {
+        const usableFamily = selectedTemplate
+          ? applyApprovalToFamily(
+              selectedTemplate.family,
+              selectedTemplate.approval,
+              { requireApprovedLayouts: true, includeUnreviewed: false },
+            )
+          : FORMA_EDITORIAL_REPORT;
+        if (selectedTemplate && usableFamily.layouts.length === 0) {
+          setError(
+            "The selected template has no approved layouts. Approve layouts in the Template Authoring Lab before generating with it.",
+          );
+          setBusy(false);
+          return;
+        }
         const res = await runAiDesignerPipeline(manuscript, {
-          family: FORMA_EDITORIAL_REPORT,
+          family: usableFamily,
           referenceProfile:
             useReferenceStyle && referenceProfile ? referenceProfile : null,
+          templateRecord: selectedTemplate
+            ? {
+                recordId: selectedTemplate.id,
+                templateId: selectedTemplate.templateId,
+                versionNumber: selectedTemplate.versionNumber,
+                source: selectedTemplate.source,
+                status: selectedTemplate.status,
+              }
+            : null,
           onProgress: (u) => {
             setPipelineProgress({
               stage: u.stage,
@@ -418,16 +468,43 @@ export default function CreatePage() {
                   </select>
                 </label>
                 {docMode === "report" && (
-                  <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3.5 text-xs text-text-secondary flex items-start gap-2.5">
-                    <Sparkles className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="block text-text-primary font-medium mb-0.5">
-                        Template: Forma Editorial Report
-                      </strong>
-                      <span>
-                        Structured multi-page layouts with exact copy integrity,
-                        measured fit checking, and visual critique.
-                      </span>
+                  <div className="space-y-3">
+                    {templateAuthoringEnabled() && (
+                      <label className="block text-sm font-semibold">
+                        Template
+                        <select
+                          value={selectedTemplateId}
+                          onChange={(event) =>
+                            setSelectedTemplateId(event.target.value)
+                          }
+                          className="mt-2 h-11 w-full rounded-lg border border-border-strong bg-bg-panel px-3 text-sm font-normal text-text-primary"
+                        >
+                          <option value="">
+                            Forma Editorial Report (built-in, approved)
+                          </option>
+                          {templateRecords.map((record) => (
+                            <option key={record.id} value={record.id}>
+                              {record.name} · v{record.versionNumber}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3.5 text-xs text-text-secondary flex items-start gap-2.5">
+                      <Sparkles className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block text-text-primary font-medium mb-0.5">
+                          Template:{" "}
+                          {selectedTemplate
+                            ? selectedTemplate.name
+                            : "Forma Editorial Report"}
+                        </strong>
+                        <span>
+                          {selectedTemplate
+                            ? `An approved template record (${selectedTemplate.source}, v${selectedTemplate.versionNumber}). Only approved layouts are used.`
+                            : "Structured multi-page layouts with exact copy integrity, measured fit checking, and visual critique."}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}

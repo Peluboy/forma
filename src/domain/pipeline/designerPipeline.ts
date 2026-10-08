@@ -101,6 +101,29 @@ export interface DesignerPipelineOptions {
   aiVisualIssues?: AiVisualIssueInput[];
   /** Optional reference design intelligence guiding styling or layout. */
   referenceProfile?: ReferenceDesignProfile | null;
+  /**
+   * Optional provenance for a Template Family record used to generate. This is
+   * recorded on the resulting DesignSpec so every output can be traced back to
+   * the exact template version that produced it.
+   */
+  templateRecord?: TemplateRecordProvenance | null;
+}
+
+export interface TemplateRecordProvenance {
+  recordId: string;
+  templateId: string;
+  versionNumber: number;
+  source: string;
+  status: string;
+}
+
+export interface TemplateUsageReport {
+  recordId: string | null;
+  templateId: string | null;
+  versionNumber: number | null;
+  source: string | null;
+  status: string | null;
+  used: boolean;
 }
 
 export interface ReferenceUsageReport {
@@ -142,6 +165,7 @@ export interface DesignerPipelineResult {
   deliverableQuality: DeliverableQualityAssessment;
   aiCritic: AiCriticInfluenceReport;
   reference: ReferenceUsageReport;
+  template: TemplateUsageReport;
   errors: string[];
 }
 
@@ -343,6 +367,33 @@ export async function runAiDesignerPipeline(
       referenceUsageMode: referenceResolution.mode,
     };
 
+  const template: TemplateUsageReport = options.templateRecord
+    ? {
+        recordId: options.templateRecord.recordId,
+        templateId: options.templateRecord.templateId,
+        versionNumber: options.templateRecord.versionNumber,
+        source: options.templateRecord.source,
+        status: options.templateRecord.status,
+        used: true,
+      }
+    : {
+        recordId: null,
+        templateId: null,
+        versionNumber: null,
+        source: null,
+        status: null,
+        used: false,
+      };
+  if (options.templateRecord)
+    finalSpec.metadata = {
+      ...finalSpec.metadata,
+      templateFamilyRecordId: options.templateRecord.recordId,
+      templateFamilyTemplateId: options.templateRecord.templateId,
+      templateFamilyVersion: options.templateRecord.versionNumber,
+      templateFamilySource: options.templateRecord.source,
+      templateFamilyStatus: options.templateRecord.status,
+    };
+
   const initialScore = quality.report.initialScore;
   const finalScore = quality.report.finalScore;
   const correctionsCount = quality.report.steps.reduce(
@@ -392,6 +443,7 @@ export async function runAiDesignerPipeline(
     deliverableQuality,
     aiCritic,
     reference,
+    template,
     errors,
   };
 }

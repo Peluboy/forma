@@ -189,3 +189,13 @@ generated DesignSpec records `referenceProfileId`, `referenceSourceType`,
 `referenceConfidence`, and `referenceUsageMode`; the result includes a
 `ReferenceUsageReport` with a heuristic `referenceSimilarity`. A reference never
 rewrites approved copy and is never presented as design reconstruction.
+
+## Phase 5 (Template provenance)
+
+`runAiDesignerPipeline` accepts an optional `templateRecord` mapping
+(`recordId`, `templateId`, `versionNumber`, `source`, `status`). When present,
+the generated DesignSpec records `templateFamilyRecordId`,
+`templateFamilyTemplateId`, `templateFamilyVersion`, `templateFamilySource`, and
+`templateFamilyStatus`, and the result exposes a `TemplateUsageReport`. The
+`/create` report flow passes this only for approved template records, and the
+family it passes already has non-approved layouts removed.

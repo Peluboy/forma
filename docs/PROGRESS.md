@@ -1,5 +1,18 @@
 # Delivery progress
 
+## October 8, 2026: Phase 5 — Template Family Authoring + Approval System v1
+
+- **Audit-first**: `docs/TEMPLATE_AUTHORING_PHASE_5.md` records what template concepts already exist (runtime `TemplateFamily`, the built-in editorial family, project-as-template, `VersionedTemplate`), what the Phase 5 record adds, and what is explicitly deferred. It is not a marketplace, not an agency workspace, and does not reconstruct PDF/PPTX.
+- **New domain module** `src/domain/template-authoring/`: `types.ts` (the `TemplateFamilyRecord` surface), `validationV2.ts`, `approval.ts`, `qualitySummary.ts`, `capacity.ts`, `records.ts`, `usage.ts`, `versioning.ts`, `smoke.ts`, `reviews.ts`, `flags.ts`, and a barrel `index.ts`.
+- **Record model**: a persisted wrapper around the runtime `TemplateFamily` with `status` (`draft|candidate|approved|archived|rejected`), `source`, `approval`, `quality`, optional `usage`/`reference`, and lineage (`templateId`, `versionNumber`, `parentVersionId`). Built-in source is created `approved`; manual is `draft`; everything else is `candidate`.
+- **Approval filtering removes layouts from the family** before it reaches the pipeline, because the deterministic planner silently degrades to `heading-body`/first layout when a needed layout is absent. Rejected layouts are always removed; needs-changes are excluded by default; unreviewed are excluded in production.
+- **Validation v2**: token/font checks, duplicate ids, slot grammar and capacity ranges, required-slot binding, element geometry/bounds, and — newly — dangling `compatibleAlternatives`/`fallbackLayouts`. This caught a real bug: reference-derived families referenced layouts they had dropped, so `profileToTemplateFamily` now prunes dangling alternatives/fallbacks and stale `varietyRules`.
+- **Capacity testing**: measured with the deterministic fit engine (`computeLineWraps` binary search); suggestions only ever tighten `maxCharacters` and are returned as an explicit changelog.
+- **UI**: new `/dev/templates` authoring lab (`TemplateAuthoringPanel.tsx`) with overview, per-layout review, capacity, smoke/preview, and version tabs. `ReferenceDevPanel` gains **Send candidate to Template Authoring**; `/create` gains a template picker limited to approved records and records template provenance (`templateFamilyRecordId`, `templateFamilyVersion`, …) on every generated DesignSpec.
+- **Persistence**: `GET/PUT/DELETE /api/template-families` (owner-scoped, optimistic version) plus migration `202610080001_template_family_kind.sql` extending the `forma_records` kind constraint and the `forma_save`/`forma_remove` allow-lists.
+- **Benchmark**: `npm run benchmark:templates` runs 7 cases (built-in, reference-ready, weak-reference, invalid-slot, missing-alternative, table-smoke, text-smoke): 4 valid, 2 invalid, 3 production-blocked, 2/2 smoke passed, avg quality 96.3, avg projection fidelity 99.3.
+- **Verification**: 155 unit tests passing (29 new template-authoring tests); `npm run lint` clean (183 TypeScript files); production build succeeded; `benchmark:quality` (27 fixtures, 100% pages ≥80, 0 unresolved fit) and `benchmark:reference` (7 cases, avg quality 88, avg fidelity 98.9) unchanged.
+
 ## October 7, 2026: Phase 4 — Reference Design Intelligence v1
 
 - **Audit-first**: `docs/REFERENCE_DESIGN_INTELLIGENCE_V1.md` records what reference support actually exists (raster overlay + prompt-level influence only), what is reusable, what must change, and what is deferred. PDF/PPTX parsing and editable reconstruction are explicitly **not** built.

@@ -270,6 +270,7 @@ test("hosted migration saves owner-only templates/skills and enforces review app
     for (const file of [
       "202609240001_forma.sql",
       "202610040001_records_and_reviews.sql",
+      "202610080001_template_family_kind.sql",
     ])
       await db.exec(
         await readFile(
@@ -303,6 +304,24 @@ test("hosted migration saves owner-only templates/skills and enforces review app
         )
       ).rows.length,
       2,
+    );
+    await save("template_family", "tf-1", { id: "tf-1", name: "Record" });
+    assert.equal(
+      (
+        await db.query(
+          "select * from public.forma_records where kind='template_family'",
+        )
+      ).rows.length,
+      1,
+    );
+    await db.query("select public.forma_remove('template_family','tf-1')");
+    assert.equal(
+      (
+        await db.query(
+          "select * from public.forma_records where kind='template_family'",
+        )
+      ).rows.length,
+      0,
     );
     await assert.rejects(save("workspace", "ws-1", {}), /INVALID_INPUT/);
     const secure = "s".repeat(48);
