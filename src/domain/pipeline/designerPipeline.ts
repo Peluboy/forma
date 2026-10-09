@@ -115,6 +115,10 @@ export interface TemplateRecordProvenance {
   versionNumber: number;
   source: string;
   status: string;
+  /** Phase 6: safe visibility + fork lineage recorded on the output. */
+  visibility?: string;
+  forkedFromTemplateId?: string;
+  originalTemplateId?: string;
 }
 
 export interface TemplateUsageReport {
@@ -392,6 +396,21 @@ export async function runAiDesignerPipeline(
       templateFamilyVersion: options.templateRecord.versionNumber,
       templateFamilySource: options.templateRecord.source,
       templateFamilyStatus: options.templateRecord.status,
+      ...(options.templateRecord.visibility
+        ? { templateFamilyVisibility: options.templateRecord.visibility }
+        : {}),
+      ...(options.templateRecord.forkedFromTemplateId
+        ? {
+            templateFamilyForkedFromTemplateId:
+              options.templateRecord.forkedFromTemplateId,
+          }
+        : {}),
+      ...(options.templateRecord.originalTemplateId
+        ? {
+            templateFamilyOriginalTemplateId:
+              options.templateRecord.originalTemplateId,
+          }
+        : {}),
     };
 
   const initialScore = quality.report.initialScore;

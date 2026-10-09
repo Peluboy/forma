@@ -734,6 +734,216 @@ export async function createApp(
       next(e);
     }
   });
+  // Public + unlisted reads are anonymous: they never expose private records.
+  app.get("/api/template-families/public", async (_req, res, next) => {
+    try {
+      const { isTemplateFamilyRecord } =
+        await import("../src/domain/template-authoring/index.js");
+      const { sanitizeTemplateForPublicView, templateGalleryCard } =
+        await import("../src/domain/template-sharing/index.js");
+      const store: Store = res.locals.store;
+      const rows = store.publicTemplates ? await store.publicTemplates() : [];
+      const templates = rows
+        .map((r) => r.data)
+        .filter(isTemplateFamilyRecord)
+        .map((record) =>
+          templateGalleryCard(
+            sanitizeTemplateForPublicView(record, {
+              publicId: record.sharing?.publicId ?? record.id,
+              visibility: "public",
+            }),
+          ),
+        );
+      res.json({ templates });
+    } catch (e) {
+      next(e);
+    }
+  });
+  app.get("/api/template-families/shared/:token", async (req, res, next) => {
+    try {
+      const { isTemplateFamilyRecord } =
+        await import("../src/domain/template-authoring/index.js");
+      const {
+        sanitizeTemplateForPublicView,
+        canViewSharedTemplate,
+        isShareRevoked,
+      } = await import("../src/domain/template-sharing/index.js");
+      const store: Store = res.locals.store;
+      const token = req.params.token;
+      const row = store.sharedTemplate
+        ? await store.sharedTemplate(token)
+        : null;
+      if (!row || !isTemplateFamilyRecord(row.data))
+        throw new ApiError(404, "This template link is unavailable.");
+      const record = row.data;
+      if (
+        isShareRevoked(record) ||
+        !canViewSharedTemplate(
+          record,
+          { ownerId: null, signedIn: false },
+          token,
+        )
+      )
+        throw new ApiError(404, "This template link is unavailable.");
+      res.json({
+        template: sanitizeTemplateForPublicView(record, {
+          publicId: record.sharing?.publicId ?? token,
+          visibility:
+            record.sharing?.visibility === "public" ? "public" : "unlisted",
+        }),
+        forkedFrom: record.forkedFrom ?? null,
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+  app.post("/api/template-families/:id/share", auth, async (req, res, next) => {
+    try {
+      const { isTemplateFamilyRecord } =
+        await import("../src/domain/template-authoring/index.js");
+      const { shareTemplateRecord, canShareTemplate, sharingBlockReason } =
+        await import("../src/domain/template-sharing/index.js");
+      const body = req.body ?? {};
+      if (!["unlisted", "public"].includes(body.visibility))
+        throw new ApiError(400, "visibility must be unlisted or public");
+      const store: Store = res.locals.store;
+      const row = await store.get(
+        res.locals.user.id,
+        "template_family",
+        req.params.id,
+      );
+      if (!row || !isTemplateFamilyRecord(row.data))
+        throw new ApiError(404, "Template not found.");
+      const shareActor = { ownerId: res.locals.user.id, signedIn: true };
+      if (!canShareTemplate(row.data, shareActor))
+        throw new ApiError(
+          403,
+          sharingBlockReason(row.data, shareActor) ??
+            "This template cannot be shared.",
+        );
+      const own = (await store.list(res.locals.user.id, "template_family"))
+        .map((r) => r.data)
+        .filter(isTemplateFamilyRecord);
+      const existingTokens = own
+        .map((r) => r.sharing?.shareToken)
+        .filter((t): t is string => Boolean(t));
+      const existingPublicIds = own
+        .map((r) => r.sharing?.publicId)
+        .filter((p): p is string => Boolean(p));
+      const result = shareTemplateRecord(
+        row.data,
+        shareActor,
+        {
+          visibility: body.visibility,
+          allowForking: Boolean(body.allowForking),
+          galleryListed: body.galleryListed,
+          license: body.license,
+          creatorName: body.creatorName,
+        },
+        existingTokens,
+        existingPublicIds,
+      );
+      const saved = await store.save(
+        res.locals.user.id,
+        "template_family",
+        row.data.id,
+        { ...result.record, ownerId: res.locals.user.id },
+        row.version,
+      );
+      res.json({
+        record: saved.data,
+        shareToken: result.shareToken,
+        publicId: result.publicId ?? null,
+        version: saved.version,
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+  app.post(
+    "/api/template-families/:id/revoke-share",
+    auth,
+    async (req, res, next) => {
+      try {
+        const { isTemplateFamilyRecord } =
+          await import("../src/domain/template-authoring/index.js");
+        const { revokeTemplateShare } =
+          await import("../src/domain/template-sharing/index.js");
+        const store: Store = res.locals.store;
+        const row = await store.get(
+          res.locals.user.id,
+          "template_family",
+          req.params.id,
+        );
+        if (!row || !isTemplateFamilyRecord(row.data))
+          throw new ApiError(404, "Template not found.");
+        const record = revokeTemplateShare(row.data, {
+          ownerId: res.locals.user.id,
+          signedIn: true,
+        });
+        const saved = await store.save(
+          res.locals.user.id,
+          "template_family",
+          row.data.id,
+          { ...record, ownerId: res.locals.user.id },
+          row.version,
+        );
+        res.json({ record: saved.data, version: saved.version });
+      } catch (e) {
+        next(e);
+      }
+    },
+  );
+  app.post("/api/template-families/:id/fork", auth, async (req, res, next) => {
+    try {
+      const { isTemplateFamilyRecord } =
+        await import("../src/domain/template-authoring/index.js");
+      const { forkTemplateRecord, canForkTemplate, forkingBlockReason } =
+        await import("../src/domain/template-sharing/index.js");
+      const store: Store = res.locals.store;
+      const token =
+        typeof req.body?.token === "string" ? req.body.token : undefined;
+      let source: RecordRow | null = null;
+      if (store.forkSource) {
+        try {
+          source = await store.forkSource(req.params.id, token);
+        } catch {
+          source = null;
+        }
+      }
+      if (!source) {
+        const own = await store.get(
+          res.locals.user.id,
+          "template_family",
+          req.params.id,
+        );
+        if (own) source = own;
+      }
+      if (!source || !isTemplateFamilyRecord(source.data))
+        throw new ApiError(404, "This template cannot be forked.");
+      const forkActor = { ownerId: res.locals.user.id, signedIn: true };
+      if (!canForkTemplate(source.data, forkActor))
+        throw new ApiError(
+          403,
+          forkingBlockReason(source.data, forkActor) ??
+            "This template cannot be forked.",
+        );
+      const forked = forkTemplateRecord(source.data, forkActor, {
+        ownerId: res.locals.user.id,
+        forkOwnerName: res.locals.user.name,
+      });
+      const saved = await store.save(
+        res.locals.user.id,
+        "template_family",
+        forked.id,
+        { ...forked, ownerId: res.locals.user.id },
+        0,
+      );
+      res.status(201).json({ record: saved.data });
+    } catch (e) {
+      next(e);
+    }
+  });
   app.get("/api/skills", auth, async (_req, res, next) => {
     try {
       const { isSkillManifest, EVENT_CAMPAIGN_SKILL } =

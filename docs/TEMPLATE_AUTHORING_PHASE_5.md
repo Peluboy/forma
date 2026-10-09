@@ -241,3 +241,20 @@ benchmarks).
   font metrics; they are suggestions, not guarantees.
 - Hosted persistence requires running the new migration; until then, hosted
   saves of `template_family` will fail and the UI falls back to a clear error.
+
+---
+
+## Phase 6 update — distribution, sharing & forking
+
+Phase 5 records were owner-private. Phase 6 adds a safe distribution layer on
+top of them without changing the runtime `TemplateFamily` model:
+
+- Record fields `sharing` (visibility, share token, public id, license,
+  attribution) and `forkedFrom` (lineage).
+- Deterministic permissions, a sanitized public payload, share tokens/public
+  ids, share/fork endpoints, forking, a dev gallery, a public preview route, and
+  share/revoke controls in this lab's **Sharing & lineage** tab.
+- See [TEMPLATE_DISTRIBUTION_PHASE_6.md](TEMPLATE_DISTRIBUTION_PHASE_6.md).
+
+Still **not** a marketplace: no payments, ratings, comments, team roles, or
+public search ranking.

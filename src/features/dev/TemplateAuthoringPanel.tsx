@@ -54,8 +54,11 @@ import {
   coverageLabel,
   statusExplanation,
 } from "./templateAuthoringUi";
+import { TemplateSharingPanel, VisibilityChip } from "./templateSharingUi";
+import { forkTemplateRecord } from "../../domain/template-sharing/index.js";
 
-type Tab = "overview" | "layouts" | "capacity" | "smoke" | "versions";
+type Tab =
+  "overview" | "layouts" | "capacity" | "smoke" | "versions" | "sharing";
 
 let storeInstance: TemplateFamilyRecordStore | null = null;
 function getStore(): TemplateFamilyRecordStore {
@@ -324,6 +327,27 @@ export default function TemplateAuthoringPanel() {
     setNotice(`Recorded a human verdict: ${verdict}.`);
   }
 
+  /**
+   * Dev-only: simulate another user forking the selected shared template. The
+   * fork is a fresh lineage root, saved locally, and never mutates the source.
+   */
+  function forkAsViewer(record: TemplateFamilyRecord) {
+    setError("");
+    try {
+      const forked = forkTemplateRecord(
+        record,
+        { ownerId: null, signedIn: false },
+        { forkOwnerName: "dev viewer" },
+      );
+      persist(forked);
+      setNotice(
+        `Forked "${record.name}" into an independent copy owned by the viewer. The original is untouched.`,
+      );
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
+  }
+
   const approval = selected
     ? summarizeApproval(selected.approval, selected.family)
     : null;
@@ -414,6 +438,14 @@ export default function TemplateAuthoringPanel() {
                     v{record.versionNumber}
                   </span>
                 )}
+                {record.sharing && record.sharing.visibility !== "private" && (
+                  <VisibilityChip visibility={record.sharing.visibility} />
+                )}
+                {record.forkedFrom && (
+                  <span className="rounded border border-slate-700 px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
+                    forked
+                  </span>
+                )}
               </div>
             </button>
           ))}
@@ -453,6 +485,12 @@ export default function TemplateAuthoringPanel() {
                       {selected.name}
                     </h2>
                     <StatusChip status={selected.status} />
+                    {selected.sharing &&
+                      selected.sharing.visibility !== "private" && (
+                        <VisibilityChip
+                          visibility={selected.sharing.visibility}
+                        />
+                      )}
                   </div>
                   <p className="mt-0.5 font-mono text-[11px] text-slate-500">
                     {selected.id} · templateId {selected.templateId} · v
@@ -502,6 +540,7 @@ export default function TemplateAuthoringPanel() {
                     ["capacity", "Capacity"],
                     ["smoke", "Smoke & preview"],
                     ["versions", "Versions"],
+                    ["sharing", "Sharing & lineage"],
                   ] as const
                 ).map(([id, label]) => (
                   <button
@@ -798,6 +837,18 @@ export default function TemplateAuthoringPanel() {
                       </Section>
                     )}
                   </div>
+                )}
+
+                {tab === "sharing" && (
+                  <TemplateSharingPanel
+                    record={selected}
+                    ownerId={session.user?.id}
+                    isDev
+                    onSave={persist}
+                    onNotice={setNotice}
+                    onError={setError}
+                    onForkAsViewer={forkAsViewer}
+                  />
                 )}
 
                 {tab === "versions" && (

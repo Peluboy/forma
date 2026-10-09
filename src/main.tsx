@@ -43,6 +43,12 @@ const ReferenceDevPanel = lazy(
 const TemplateAuthoringPanel = lazy(
   () => import("./features/dev/TemplateAuthoringPanel"),
 );
+const TemplateGalleryPage = lazy(
+  () => import("./features/templates/TemplateGalleryPage"),
+);
+const PublicTemplatePage = lazy(
+  () => import("./features/templates/PublicTemplatePage"),
+);
 const path = location.pathname.replace(/\/$/, "") || "/";
 const query = new URLSearchParams(location.search);
 // Preserve payment and password-reset links issued by the previous release.
@@ -50,6 +56,10 @@ if (path === "/" && query.has("billing"))
   location.replace(`/account?tab=billing&${query}`);
 const screen = path.startsWith("/review/") ? (
   <ReviewPage token={path.split("/")[2]} />
+) : path.startsWith("/template/") ? (
+  <PublicTemplatePage token={path.split("/")[2]} />
+) : path === "/dev/template-gallery" ? (
+  <TemplateGalleryPage />
 ) : path === "/dashboard" ? (
   <Dashboard />
 ) : path === "/dev/reference" ? (

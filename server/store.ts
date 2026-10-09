@@ -12,6 +12,12 @@ export interface Store {
   get(owner: string, kind: string, id: string): Promise<RecordRow | null>;
   /** Server-only lookup by kind+id after membership checks. */
   getAny?(kind: string, id: string): Promise<RecordRow | null>;
+  /** Resolve an approved, unlisted/public template by its share token. */
+  sharedTemplate?(token: string): Promise<RecordRow | null>;
+  /** Approved, public, gallery-listed, non-revoked templates. */
+  publicTemplates?(): Promise<RecordRow[]>;
+  /** Resolve an approved, forkable template by public id or share token. */
+  forkSource?(id: string, token?: string): Promise<RecordRow | null>;
   save(
     owner: string,
     kind: string,
@@ -80,6 +86,61 @@ export async function localStore(path: string) {
     async getAny(kind, id) {
       return decode(
         db.prepare("SELECT * FROM records WHERE kind=? AND id=?").get(kind, id),
+      );
+    },
+    async sharedTemplate(token) {
+      return decode(
+        db
+          .prepare(
+            `SELECT * FROM records WHERE kind='template_family'
+               AND (json_extract(data,'$.sharing.shareToken')=?
+                    OR json_extract(data,'$.sharing.publicId')=?)
+               AND json_extract(data,'$.status')='approved'
+               AND json_extract(data,'$.sharing.revokedAt') IS NULL
+               AND json_extract(data,'$.sharing.visibility') IN ('unlisted','public')
+             LIMIT 1`,
+          )
+          .get(token, token),
+      );
+    },
+    async publicTemplates() {
+      return db
+        .prepare(
+          `SELECT * FROM records WHERE kind='template_family'
+             AND json_extract(data,'$.status')='approved'
+             AND json_extract(data,'$.sharing.visibility')='public'
+             AND COALESCE(json_extract(data,'$.sharing.galleryListed'),1)<>0
+             AND json_extract(data,'$.sharing.revokedAt') IS NULL
+           ORDER BY created_at DESC`,
+        )
+        .all()
+        .map(decode);
+    },
+    async forkSource(id, token) {
+      if (token)
+        return decode(
+          db
+            .prepare(
+              `SELECT * FROM records WHERE kind='template_family'
+                 AND json_extract(data,'$.sharing.shareToken')=?
+                 AND json_extract(data,'$.status')='approved'
+                 AND json_extract(data,'$.sharing.allowForking')=1
+                 AND json_extract(data,'$.sharing.revokedAt') IS NULL
+               LIMIT 1`,
+            )
+            .get(token),
+        );
+      return decode(
+        db
+          .prepare(
+            `SELECT * FROM records WHERE kind='template_family' AND id=?
+               AND json_extract(data,'$.status')='approved'
+               AND json_extract(data,'$.sharing.allowForking')=1
+               AND json_extract(data,'$.sharing.visibility')='public'
+               AND json_extract(data,'$.sharing.revokedAt') IS NULL
+             LIMIT 1`,
+          )
+          .get(id),
       );
     },
     async findUserByEmail(email) {
@@ -286,6 +347,22 @@ export async function supabaseStore(url: string, key: string, token?: string) {
           .eq("kind", kind)
           .eq("id", id)
           .maybeSingle(),
+      );
+    },
+    async sharedTemplate(token) {
+      return check(
+        await client.rpc("forma_template_shared", { p_token: token }),
+      );
+    },
+    async publicTemplates() {
+      return check(await client.rpc("forma_template_public_list"));
+    },
+    async forkSource(id, token) {
+      return check(
+        await client.rpc("forma_template_fork_source", {
+          p_id: id,
+          p_token: token ?? null,
+        }),
       );
     },
     async save(_owner, kind, id, data, expected) {

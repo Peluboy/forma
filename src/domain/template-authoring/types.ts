@@ -23,7 +23,51 @@ export type TemplateRecordSource =
   | "reference_derived"
   | "designspec_derived"
   | "project_derived"
-  | "manual";
+  | "manual"
+  | "forked";
+
+// ─── Visibility + sharing (Phase 6, Part B) ──────────────────────────────────
+
+export type TemplateVisibility = "private" | "unlisted" | "public";
+
+export type TemplateLicense =
+  "private_use" | "internal_use" | "free_to_fork" | "custom";
+
+export interface TemplateAttribution {
+  creatorName?: string;
+  sourceTemplateId?: string;
+  sourceVersionId?: string;
+  originalCreatorName?: string;
+}
+
+export interface TemplateSharingState {
+  visibility: TemplateVisibility;
+  /** Hard-to-guess token that resolves an unlisted template. */
+  shareToken?: string;
+  /** Stable, collision-checked public locator (no owner ids). */
+  publicId?: string;
+  sharedAt?: string;
+  sharedBy?: string;
+  /** When set, the share link (and public listing) no longer resolves. */
+  revokedAt?: string;
+  allowForking: boolean;
+  /** Whether a public template appears in the gallery. */
+  galleryListed?: boolean;
+  license?: TemplateLicense;
+  attribution?: TemplateAttribution;
+}
+
+// ─── Fork lineage (Phase 6, Part H) ──────────────────────────────────────────
+
+export interface TemplateForkLineage {
+  forkedFromTemplateId: string;
+  forkedFromVersionId: string;
+  forkedFromOwnerId?: string;
+  forkedAt: string;
+  originalTemplateId: string;
+  lineageRootId: string;
+  forkOwnerName?: string;
+}
 
 export type TemplateIssueSeverity = "error" | "warning" | "info";
 
@@ -257,6 +301,11 @@ export interface TemplateFamilyRecord {
 
   reference?: TemplateReferenceLineage;
 
+  // Phase 6: safe visibility/sharing and fork lineage. Absent means private +
+  // not forkable (the safe default).
+  sharing?: TemplateSharingState;
+  forkedFrom?: TemplateForkLineage;
+
   // Versioning (Part J). `templateId` is the lineage root; `id` is the record id.
   templateId: string;
   versionNumber: number;
@@ -275,6 +324,8 @@ export interface TemplateRecordInput {
   ownerId?: string;
   status?: TemplateRecordStatus;
   reference?: TemplateReferenceLineage;
+  sharing?: TemplateSharingState;
+  forkedFrom?: TemplateForkLineage;
 }
 
 export type { TemplateFamily, TemplateLayout, TemplateSlot };

@@ -215,8 +215,18 @@ export function mergeDeterministicAndAiIssues(
   };
 }
 
+/**
+ * Resolves the opt-in env map without dereferencing the Node `process` global,
+ * which does not exist in the browser bundle (it would throw
+ * `ReferenceError: process is not defined`). In the browser this falls back to
+ * an empty map, so AI critic influence stays opt-in and off by default.
+ */
+function defaultAiCriticEnv(): Record<string, string | undefined> {
+  return typeof process !== "undefined" && process.env ? process.env : {};
+}
+
 export function aiCriticInfluenceEnabled(
-  env: Record<string, string | undefined> = process.env,
+  env: Record<string, string | undefined> = defaultAiCriticEnv(),
 ): boolean {
   return env.FORMA_AI_CRITIC_INFLUENCE === "true";
 }

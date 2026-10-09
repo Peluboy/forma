@@ -20,9 +20,25 @@ approval           TemplateApprovalState
 quality            TemplateQualitySummary
 usage?             TemplateUsageMetadata
 reference?         TemplateReferenceLineage
+sharing?           TemplateSharingState    (Phase 6)
+forkedFrom?        TemplateForkLineage     (Phase 6)
 changelog?         human-readable
 createdAt/updatedAt
 ```
+
+## Phase 6 fields
+
+- `sharing` — visibility (`private | unlisted | public`), revocable `shareToken`,
+  stable `publicId`, `allowForking`, `galleryListed`, `license`, `attribution`.
+  **Absent means private and not forkable** (the safe default).
+- `forkedFrom` — lineage back to the template this record was forked from
+  (`forkedFromTemplateId`, `forkedFromVersionId`, `forkedFromOwnerId?`,
+  `forkedAt`, `originalTemplateId`, `lineageRootId`, `forkOwnerName?`).
+- `source` gains `"forked"`.
+
+See [permissions](TEMPLATE_SHARING_PERMISSIONS.md),
+[forking](TEMPLATE_FORKING_V1.md), and
+[Phase 6 overview](TEMPLATE_DISTRIBUTION_PHASE_6.md).
 
 ## Creation
 
@@ -55,5 +71,6 @@ root, draft).
 
 ## Not in v1
 
-No marketplace, no sharing beyond owner scope, no diff/merge, no automatic
-capacity mutation.
+No marketplace, no diff/merge, no automatic capacity mutation, no paid
+monetization. Sharing is limited to read-only previews, unlisted/public links,
+and forking (see the Phase 6 docs).

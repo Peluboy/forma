@@ -1,4 +1,6 @@
 import { readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test, expect } from "@playwright/test";
 
 test("self-hosted font and text styles survive save and embed in SVG export", async ({
@@ -43,7 +45,7 @@ test("self-hosted font and text styles survive save and embed in SVG export", as
     page.locator('.artboard text[font-family="Inter"]'),
   ).toBeVisible();
   await page.screenshot({
-    path: "/private/tmp/forma-typography-toolbar.png",
+    path: join(tmpdir(), "forma-typography-toolbar.png"),
     fullPage: true,
   });
   await page.getByRole("button", { name: "Export", exact: true }).click();
@@ -76,7 +78,7 @@ test("Elements categories open working Forma tools", async ({ page }) => {
     page.getByRole("button", { name: "Upload image" }),
   ).toBeVisible();
   await page.screenshot({
-    path: "/private/tmp/forma-elements-categories.png",
+    path: join(tmpdir(), "forma-elements-categories.png"),
     fullPage: true,
   });
   await page.getByRole("button", { name: "Tables", exact: true }).click();
@@ -129,7 +131,7 @@ test("text toolbar stays usable on a narrow dark workspace", async ({
     ),
   ).toBe(true);
   await page.screenshot({
-    path: "/private/tmp/forma-typography-mobile-dark.png",
+    path: join(tmpdir(), "forma-typography-mobile-dark.png"),
     fullPage: true,
   });
 });

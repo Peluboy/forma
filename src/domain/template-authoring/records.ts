@@ -38,7 +38,7 @@ export function defaultStatusForSource(
   source: TemplateRecordSource,
 ): TemplateRecordStatus {
   if (source === "builtin") return "approved";
-  if (source === "manual") return "draft";
+  if (source === "manual" || source === "forked") return "draft";
   return "candidate";
 }
 
@@ -84,6 +84,8 @@ export function createTemplateFamilyRecord(
     quality,
     usage: emptyUsageMetadata(),
     ...(input.reference ? { reference: input.reference } : {}),
+    ...(input.sharing ? { sharing: input.sharing } : {}),
+    ...(input.forkedFrom ? { forkedFrom: input.forkedFrom } : {}),
     templateId,
     versionNumber: 1,
     changelog: "Initial version.",
@@ -123,6 +125,7 @@ export interface TemplateRecordPatch {
   approval?: TemplateFamilyRecord["approval"];
   usage?: TemplateFamilyRecord["usage"];
   reference?: TemplateFamilyRecord["reference"];
+  sharing?: TemplateFamilyRecord["sharing"];
   changelog?: string;
   finalize?: FinalizeInput;
 }
@@ -142,6 +145,7 @@ export function updateTemplateFamilyRecord(
     ...(patch.approval !== undefined ? { approval: patch.approval } : {}),
     ...(patch.usage !== undefined ? { usage: patch.usage } : {}),
     ...(patch.reference !== undefined ? { reference: patch.reference } : {}),
+    ...(patch.sharing !== undefined ? { sharing: patch.sharing } : {}),
     ...(patch.changelog !== undefined ? { changelog: patch.changelog } : {}),
     updatedAt: nowIso(),
   };

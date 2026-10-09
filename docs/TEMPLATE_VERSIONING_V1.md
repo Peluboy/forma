@@ -21,3 +21,13 @@ A safe history, **not** git-style diffing or merging.
 A generated project can be traced to the exact template version that produced
 it via `finalSpec.metadata.templateFamilyRecordId` / `templateFamilyVersion`.
 Keeping old versions means that link stays resolvable.
+
+## Phase 6 interaction
+
+- A **fork** is a **fresh lineage root** (new `templateId`), not a new version of
+  the source. The fork links back via `forkedFrom` instead of `parentVersionId`.
+- Editing a fork (or any record) through `createTemplateVersion` resets approval,
+  as before. This is why a fork that inherited `approved` becomes unapproved the
+  moment it is edited.
+- Revoking or archiving a source template does not invalidate versions, forks, or
+  previously generated projects.

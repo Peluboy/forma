@@ -288,6 +288,17 @@ export default function CreatePage() {
                 versionNumber: selectedTemplate.versionNumber,
                 source: selectedTemplate.source,
                 status: selectedTemplate.status,
+                ...(selectedTemplate.sharing?.visibility
+                  ? { visibility: selectedTemplate.sharing.visibility }
+                  : {}),
+                ...(selectedTemplate.forkedFrom
+                  ? {
+                      forkedFromTemplateId:
+                        selectedTemplate.forkedFrom.forkedFromTemplateId,
+                      originalTemplateId:
+                        selectedTemplate.forkedFrom.originalTemplateId,
+                    }
+                  : {}),
               }
             : null,
           onProgress: (u) => {
@@ -485,6 +496,7 @@ export default function CreatePage() {
                           {templateRecords.map((record) => (
                             <option key={record.id} value={record.id}>
                               {record.name} · v{record.versionNumber}
+                              {record.source === "forked" ? " · forked" : ""}
                             </option>
                           ))}
                         </select>
@@ -501,9 +513,21 @@ export default function CreatePage() {
                         </strong>
                         <span>
                           {selectedTemplate
-                            ? `An approved template record (${selectedTemplate.source}, v${selectedTemplate.versionNumber}). Only approved layouts are used.`
+                            ? `An approved template record (${selectedTemplate.source}, v${selectedTemplate.versionNumber}${
+                                selectedTemplate.sharing?.visibility
+                                  ? `, ${selectedTemplate.sharing.visibility}`
+                                  : ""
+                              }). Only approved layouts are used.`
                             : "Structured multi-page layouts with exact copy integrity, measured fit checking, and visual critique."}
                         </span>
+                        {selectedTemplate?.forkedFrom && (
+                          <span className="mt-1 block text-text-secondary">
+                            Forked from{" "}
+                            {selectedTemplate.forkedFrom.originalTemplateId}
+                            {" · "}
+                            {selectedTemplate.forkedFrom.forkedAt.slice(0, 10)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

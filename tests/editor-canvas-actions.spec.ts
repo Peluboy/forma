@@ -1,3 +1,5 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test, expect } from "@playwright/test";
 import sharp from "sharp";
 
@@ -42,7 +44,7 @@ test("canvas text, colors, context actions and floating layers work together", a
   const layers = page.getByRole("complementary", { name: "Layers" });
   await expect(layers.getByText("Manuscript fields")).toBeVisible();
   await page.screenshot({
-    path: "/private/tmp/forma-canvas-layers.png",
+    path: join(tmpdir(), "forma-canvas-layers.png"),
     fullPage: true,
   });
   await layers.getByRole("button", { name: "Hide Headline" }).click();
@@ -94,7 +96,7 @@ test("uploaded photos snap into resizable crop-to-fill frames", async ({
     page.getByRole("button", { name: "Select portrait.png" }),
   ).toHaveCount(0);
   await page.screenshot({
-    path: "/private/tmp/forma-photo-frame.png",
+    path: join(tmpdir(), "forma-photo-frame.png"),
     fullPage: true,
   });
   await page.reload();
