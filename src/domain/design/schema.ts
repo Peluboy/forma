@@ -128,6 +128,10 @@ export type Project = {
   flow?: import("./flowDocument.js").FlowDocument;
   /** Present when family is presentation */
   presentation?: import("./presentation.js").PresentationDeck;
+  /** Phase 7: Agency Workspace and Client scoping */
+  workspaceId?: string;
+  clientId?: string;
+  metadata?: Record<string, unknown>;
 };
 export type ContentBlock = {
   id: string;

@@ -306,6 +306,10 @@ export interface TemplateFamilyRecord {
   sharing?: TemplateSharingState;
   forkedFrom?: TemplateForkLineage;
 
+  // Phase 7: Agency Workspace and Client scoping
+  workspaceId?: string;
+  clientId?: string;
+
   // Versioning (Part J). `templateId` is the lineage root; `id` is the record id.
   templateId: string;
   versionNumber: number;
@@ -326,6 +330,8 @@ export interface TemplateRecordInput {
   reference?: TemplateReferenceLineage;
   sharing?: TemplateSharingState;
   forkedFrom?: TemplateForkLineage;
+  workspaceId?: string;
+  clientId?: string;
 }
 
 export type { TemplateFamily, TemplateLayout, TemplateSlot };

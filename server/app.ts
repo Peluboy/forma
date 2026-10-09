@@ -1053,6 +1053,18 @@ export async function createApp(
         name: typeof req.body?.name === "string" ? req.body.name : "",
         owner: actor,
       });
+      if (req.body?.description && typeof req.body.description === "string") {
+        workspace.description = req.body.description.trim();
+      }
+      if (
+        req.body?.type &&
+        ["personal", "agency", "team"].includes(req.body.type)
+      ) {
+        workspace.type = req.body.type;
+      }
+      if (req.body?.settings && typeof req.body.settings === "object") {
+        workspace.settings = { ...workspace.settings, ...req.body.settings };
+      }
       await res.locals.store.save(actor.userId, "workspace", id, workspace, 0);
       await res.locals.store.save(
         actor.userId,
@@ -1099,6 +1111,413 @@ export async function createApp(
         myRole: role,
         membership: membershipFromWorkspace(row.data, res.locals.user.id),
       });
+    } catch (e: any) {
+      if (e?.status === 403) next(new ApiError(403, e.message));
+      else next(e);
+    }
+  });
+
+  app.put("/api/workspaces/:id", auth, async (req, res, next) => {
+    try {
+      if (mode !== "local" || !res.locals.store.getAny)
+        throw new ApiError(
+          501,
+          "Team workspaces are available in local account mode for this release",
+        );
+      const { isWorkspace, assertWorkspaceAccess, createAuditEvent } =
+        await import("../src/domain/team/teamOps.js");
+      const row = await res.locals.store.getAny!("workspace", req.params.id);
+      if (!row || !isWorkspace(row.data))
+        throw new ApiError(404, "Workspace not found");
+      const role = assertWorkspaceAccess(
+        row.data,
+        res.locals.user.id,
+        "manage_members",
+      );
+      const name =
+        typeof req.body?.name === "string"
+          ? req.body.name.trim()
+          : row.data.name;
+      if (!name || name.length > 100)
+        throw new ApiError(400, "Workspace name must be 1 to 100 characters");
+      const nextWs = {
+        ...row.data,
+        name,
+        description:
+          typeof req.body?.description === "string"
+            ? req.body.description.trim()
+            : row.data.description,
+        settings:
+          req.body?.settings && typeof req.body.settings === "object"
+            ? { ...row.data.settings, ...req.body.settings }
+            : row.data.settings,
+        updatedAt: new Date().toISOString(),
+      };
+      await res.locals.store.save(
+        row.owner_id,
+        "workspace",
+        nextWs.id,
+        nextWs,
+        row.version,
+      );
+      const auditId = randomUUID();
+      const actor = {
+        userId: res.locals.user.id,
+        email: res.locals.user.email,
+        name: res.locals.user.name,
+      };
+      await res.locals.store.save(
+        row.owner_id,
+        "audit",
+        auditId,
+        createAuditEvent({
+          id: auditId,
+          workspaceId: nextWs.id,
+          actor,
+          action: "workspace.update",
+          target: nextWs.id,
+          detail: { name: nextWs.name },
+        }),
+        0,
+      );
+      res.json({ workspace: nextWs, myRole: role });
+    } catch (e: any) {
+      if (e?.status === 403) next(new ApiError(403, e.message));
+      else next(e);
+    }
+  });
+
+  app.delete("/api/workspaces/:id", auth, async (req, res, next) => {
+    try {
+      if (mode !== "local" || !res.locals.store.getAny)
+        throw new ApiError(
+          501,
+          "Team workspaces are available in local account mode for this release",
+        );
+      const { isWorkspace, memberRole } =
+        await import("../src/domain/team/teamOps.js");
+      const row = await res.locals.store.getAny!("workspace", req.params.id);
+      if (!row || !isWorkspace(row.data))
+        throw new ApiError(404, "Workspace not found");
+      const role = memberRole(row.data, res.locals.user.id);
+      if (role !== "owner")
+        throw new ApiError(
+          403,
+          "Only the workspace owner can delete the workspace",
+        );
+      await res.locals.store.remove(row.owner_id, "workspace", req.params.id);
+      for (const m of row.data.members) {
+        await res.locals.store
+          .remove(
+            m.userId,
+            "workspace_membership",
+            `${req.params.id}:${m.userId}`,
+          )
+          .catch(() => {});
+      }
+      if (res.locals.store.listAny) {
+        const clientRows = await res.locals.store.listAny("client");
+        for (const cr of clientRows) {
+          if (cr.data?.workspaceId === req.params.id) {
+            await res.locals.store
+              .remove(cr.owner_id, "client", cr.id)
+              .catch(() => {});
+          }
+        }
+      }
+      res.json({ ok: true });
+    } catch (e: any) {
+      if (e?.status === 403) next(new ApiError(403, e.message));
+      else next(e);
+    }
+  });
+
+  app.get(
+    "/api/workspaces/:workspaceId/clients",
+    auth,
+    async (req, res, next) => {
+      try {
+        if (mode !== "local" || !res.locals.store.getAny)
+          throw new ApiError(
+            501,
+            "Team workspaces are available in local account mode for this release",
+          );
+        const { isWorkspace, assertWorkspaceAccess } =
+          await import("../src/domain/team/teamOps.js");
+        const wsRow = await res.locals.store.getAny!(
+          "workspace",
+          req.params.workspaceId,
+        );
+        if (!wsRow || !isWorkspace(wsRow.data))
+          throw new ApiError(404, "Workspace not found");
+        assertWorkspaceAccess(wsRow.data, res.locals.user.id, "view");
+        let clients = [];
+        if (res.locals.store.listAny) {
+          const rows = await res.locals.store.listAny("client");
+          clients = rows
+            .filter(
+              (r: any) =>
+                r.data && r.data.workspaceId === req.params.workspaceId,
+            )
+            .map((r: any) => r.data);
+        }
+        res.json({ clients });
+      } catch (e: any) {
+        if (e?.status === 403) next(new ApiError(403, e.message));
+        else next(e);
+      }
+    },
+  );
+
+  app.post(
+    "/api/workspaces/:workspaceId/clients",
+    auth,
+    async (req, res, next) => {
+      try {
+        if (mode !== "local" || !res.locals.store.getAny)
+          throw new ApiError(
+            501,
+            "Team workspaces are available in local account mode for this release",
+          );
+        const { isWorkspace, assertWorkspaceAccess, createAuditEvent } =
+          await import("../src/domain/team/teamOps.js");
+        const { createClientRecord, validateClient } =
+          await import("../src/domain/workspace/index.js");
+        const wsRow = await res.locals.store.getAny!(
+          "workspace",
+          req.params.workspaceId,
+        );
+        if (!wsRow || !isWorkspace(wsRow.data))
+          throw new ApiError(404, "Workspace not found");
+        assertWorkspaceAccess(wsRow.data, res.locals.user.id, "manage_members");
+        const client = createClientRecord({
+          ...req.body,
+          workspaceId: req.params.workspaceId,
+        });
+        const validation = validateClient(client, req.params.workspaceId);
+        if (!validation.valid)
+          throw new ApiError(400, validation.errors.join("; "));
+        await res.locals.store.save(
+          wsRow.owner_id,
+          "client",
+          client.id,
+          client,
+          0,
+        );
+        const auditId = randomUUID();
+        const actor = {
+          userId: res.locals.user.id,
+          email: res.locals.user.email,
+          name: res.locals.user.name,
+        };
+        await res.locals.store.save(
+          wsRow.owner_id,
+          "audit",
+          auditId,
+          createAuditEvent({
+            id: auditId,
+            workspaceId: wsRow.data.id,
+            actor,
+            action: "client.create",
+            target: client.id,
+            detail: { name: client.name },
+          }),
+          0,
+        );
+        res.status(201).json({ client });
+      } catch (e: any) {
+        if (e?.status === 403) next(new ApiError(403, e.message));
+        else next(e);
+      }
+    },
+  );
+
+  app.get("/api/clients/:id", auth, async (req, res, next) => {
+    try {
+      if (mode !== "local" || !res.locals.store.getAny)
+        throw new ApiError(
+          501,
+          "Team workspaces are available in local account mode for this release",
+        );
+      const { isWorkspace, assertWorkspaceAccess } =
+        await import("../src/domain/team/teamOps.js");
+      const clientRow = await res.locals.store.getAny!("client", req.params.id);
+      if (!clientRow || !clientRow.data)
+        throw new ApiError(404, "Client not found");
+      const wsRow = await res.locals.store.getAny!(
+        "workspace",
+        clientRow.data.workspaceId,
+      );
+      if (!wsRow || !isWorkspace(wsRow.data))
+        throw new ApiError(404, "Workspace for client not found");
+      assertWorkspaceAccess(wsRow.data, res.locals.user.id, "view");
+      res.json({ client: clientRow.data });
+    } catch (e: any) {
+      if (e?.status === 403) next(new ApiError(403, e.message));
+      else next(e);
+    }
+  });
+
+  app.put("/api/clients/:id", auth, async (req, res, next) => {
+    try {
+      if (mode !== "local" || !res.locals.store.getAny)
+        throw new ApiError(
+          501,
+          "Team workspaces are available in local account mode for this release",
+        );
+      const { isWorkspace, assertWorkspaceAccess, createAuditEvent } =
+        await import("../src/domain/team/teamOps.js");
+      const clientRow = await res.locals.store.getAny!("client", req.params.id);
+      if (!clientRow || !clientRow.data)
+        throw new ApiError(404, "Client not found");
+      const wsRow = await res.locals.store.getAny!(
+        "workspace",
+        clientRow.data.workspaceId,
+      );
+      if (!wsRow || !isWorkspace(wsRow.data))
+        throw new ApiError(404, "Workspace for client not found");
+      assertWorkspaceAccess(wsRow.data, res.locals.user.id, "publish");
+      const prev = clientRow.data;
+      const nextClient = {
+        ...prev,
+        name:
+          typeof req.body?.name === "string" ? req.body.name.trim() : prev.name,
+        description:
+          typeof req.body?.description === "string"
+            ? req.body.description.trim()
+            : prev.description,
+        status: ["active", "archived"].includes(req.body?.status)
+          ? req.body.status
+          : prev.status,
+        notes:
+          typeof req.body?.notes === "string"
+            ? req.body.notes.trim()
+            : prev.notes,
+        brandIds: Array.isArray(req.body?.brandIds)
+          ? req.body.brandIds
+          : prev.brandIds,
+        templateFamilyRecordIds: Array.isArray(
+          req.body?.templateFamilyRecordIds,
+        )
+          ? req.body.templateFamilyRecordIds
+          : prev.templateFamilyRecordIds,
+        projectIds: Array.isArray(req.body?.projectIds)
+          ? req.body.projectIds
+          : prev.projectIds,
+        updatedAt: new Date().toISOString(),
+      };
+      await res.locals.store.save(
+        wsRow.owner_id,
+        "client",
+        nextClient.id,
+        nextClient,
+        clientRow.version,
+      );
+      const auditId = randomUUID();
+      const actor = {
+        userId: res.locals.user.id,
+        email: res.locals.user.email,
+        name: res.locals.user.name,
+      };
+      await res.locals.store.save(
+        wsRow.owner_id,
+        "audit",
+        auditId,
+        createAuditEvent({
+          id: auditId,
+          workspaceId: wsRow.data.id,
+          actor,
+          action: "client.update",
+          target: nextClient.id,
+          detail: { name: nextClient.name },
+        }),
+        0,
+      );
+      res.json({ client: nextClient });
+    } catch (e: any) {
+      if (e?.status === 403) next(new ApiError(403, e.message));
+      else next(e);
+    }
+  });
+
+  app.post("/api/clients/:id/archive", auth, async (req, res, next) => {
+    try {
+      if (mode !== "local" || !res.locals.store.getAny)
+        throw new ApiError(
+          501,
+          "Team workspaces are available in local account mode for this release",
+        );
+      const { isWorkspace, assertWorkspaceAccess, createAuditEvent } =
+        await import("../src/domain/team/teamOps.js");
+      const clientRow = await res.locals.store.getAny!("client", req.params.id);
+      if (!clientRow || !clientRow.data)
+        throw new ApiError(404, "Client not found");
+      const wsRow = await res.locals.store.getAny!(
+        "workspace",
+        clientRow.data.workspaceId,
+      );
+      if (!wsRow || !isWorkspace(wsRow.data))
+        throw new ApiError(404, "Workspace for client not found");
+      assertWorkspaceAccess(wsRow.data, res.locals.user.id, "manage_members");
+      const nextClient = {
+        ...clientRow.data,
+        status: "archived" as const,
+        updatedAt: new Date().toISOString(),
+      };
+      await res.locals.store.save(
+        wsRow.owner_id,
+        "client",
+        nextClient.id,
+        nextClient,
+        clientRow.version,
+      );
+      const auditId = randomUUID();
+      const actor = {
+        userId: res.locals.user.id,
+        email: res.locals.user.email,
+        name: res.locals.user.name,
+      };
+      await res.locals.store.save(
+        wsRow.owner_id,
+        "audit",
+        auditId,
+        createAuditEvent({
+          id: auditId,
+          workspaceId: wsRow.data.id,
+          actor,
+          action: "client.archive",
+          target: nextClient.id,
+        }),
+        0,
+      );
+      res.json({ client: nextClient });
+    } catch (e: any) {
+      if (e?.status === 403) next(new ApiError(403, e.message));
+      else next(e);
+    }
+  });
+
+  app.delete("/api/clients/:id", auth, async (req, res, next) => {
+    try {
+      if (mode !== "local" || !res.locals.store.getAny)
+        throw new ApiError(
+          501,
+          "Team workspaces are available in local account mode for this release",
+        );
+      const { isWorkspace, assertWorkspaceAccess } =
+        await import("../src/domain/team/teamOps.js");
+      const clientRow = await res.locals.store.getAny!("client", req.params.id);
+      if (!clientRow || !clientRow.data)
+        throw new ApiError(404, "Client not found");
+      const wsRow = await res.locals.store.getAny!(
+        "workspace",
+        clientRow.data.workspaceId,
+      );
+      if (!wsRow || !isWorkspace(wsRow.data))
+        throw new ApiError(404, "Workspace for client not found");
+      assertWorkspaceAccess(wsRow.data, res.locals.user.id, "manage_members");
+      await res.locals.store.remove(wsRow.owner_id, "client", req.params.id);
+      res.json({ ok: true });
     } catch (e: any) {
       if (e?.status === 403) next(new ApiError(403, e.message));
       else next(e);

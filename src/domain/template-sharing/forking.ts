@@ -35,6 +35,8 @@ export interface ForkOptions {
   forkOwnerName?: string;
   lineageRootId?: string;
   originalTemplateId?: string;
+  workspaceId?: string;
+  clientId?: string;
 }
 
 function nowIso(): string {
@@ -50,8 +52,21 @@ function deepCopyFamily(family: TemplateFamily): TemplateFamily {
 export function forkTemplateRecord(
   source: TemplateFamilyRecord,
   actor: TemplateActor,
-  options: ForkOptions = {},
+  optionsOrName?: ForkOptions | string,
+  maybeDescription?: string,
+  maybeWorkspaceId?: string,
+  maybeClientId?: string,
 ): TemplateFamilyRecord {
+  const options: ForkOptions =
+    typeof optionsOrName === "string"
+      ? {
+          name: optionsOrName,
+          description: maybeDescription,
+          workspaceId: maybeWorkspaceId,
+          clientId: maybeClientId,
+        }
+      : (optionsOrName ?? {});
+
   if (!canForkTemplate(source, actor))
     throw new Error(
       forkingBlockReason(source, actor) ?? "This template cannot be forked.",
@@ -81,6 +96,8 @@ export function forkTemplateRecord(
       ? { description: options.description ?? source.description }
       : {}),
     ...(options.ownerId ? { ownerId: options.ownerId } : {}),
+    ...(options.workspaceId ? { workspaceId: options.workspaceId } : {}),
+    ...(options.clientId ? { clientId: options.clientId } : {}),
     status: "draft",
     forkedFrom: lineage,
   });

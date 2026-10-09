@@ -12,6 +12,8 @@ export interface Store {
   get(owner: string, kind: string, id: string): Promise<RecordRow | null>;
   /** Server-only lookup by kind+id after membership checks. */
   getAny?(kind: string, id: string): Promise<RecordRow | null>;
+  /** Server-only list of all records of a given kind (for membership-scoped lookups). */
+  listAny?(kind: string): Promise<RecordRow[]>;
   /** Resolve an approved, unlisted/public template by its share token. */
   sharedTemplate?(token: string): Promise<RecordRow | null>;
   /** Approved, public, gallery-listed, non-revoked templates. */
@@ -87,6 +89,12 @@ export async function localStore(path: string) {
       return decode(
         db.prepare("SELECT * FROM records WHERE kind=? AND id=?").get(kind, id),
       );
+    },
+    async listAny(kind) {
+      return db
+        .prepare("SELECT * FROM records WHERE kind=? ORDER BY created_at DESC")
+        .all(kind)
+        .map(decode);
     },
     async sharedTemplate(token) {
       return decode(

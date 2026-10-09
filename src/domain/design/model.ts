@@ -244,6 +244,14 @@ export function isProject(value: unknown): value is Project {
     !["graphics", "document", "presentation"].includes(p.family)
   )
     return false;
+  if (p.workspaceId !== undefined && typeof p.workspaceId !== "string")
+    return false;
+  if (p.clientId !== undefined && typeof p.clientId !== "string") return false;
+  if (
+    p.metadata !== undefined &&
+    (!p.metadata || typeof p.metadata !== "object" || Array.isArray(p.metadata))
+  )
+    return false;
   if (p.flow !== undefined) {
     const flow = p.flow as {
       pages?: unknown;

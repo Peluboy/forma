@@ -129,4 +129,5 @@ store, and the share URL shown in the lab is clearly a **local-only** link
 
 See also: [permissions](TEMPLATE_SHARING_PERMISSIONS.md),
 [forking](TEMPLATE_FORKING_V1.md), [gallery](TEMPLATE_GALLERY_V1.md),
-[security review](TEMPLATE_SHARING_SECURITY_REVIEW.md).
+[security review](TEMPLATE_SHARING_SECURITY_REVIEW.md),
+[agency workspace phase 7](AGENCY_WORKSPACE_PHASE_7.md).

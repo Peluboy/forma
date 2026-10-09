@@ -107,6 +107,9 @@ export interface DesignerPipelineOptions {
    * the exact template version that produced it.
    */
   templateRecord?: TemplateRecordProvenance | null;
+  /** Phase 7: Agency Workspace and Client scoping. */
+  workspaceId?: string;
+  clientId?: string;
 }
 
 export interface TemplateRecordProvenance {
@@ -327,6 +330,8 @@ export async function runAiDesignerPipeline(
   );
   const projection = projectDesignSpecToFlowDocument(finalSpec, manuscript);
   const project = projection.project;
+  if (options.workspaceId) project.workspaceId = options.workspaceId;
+  if (options.clientId) project.clientId = options.clientId;
   const exportConsistency = checkEditorExportConsistency(finalSpec, project);
   const deliverableQuality = assessDeliverableQuality(
     quality.report.finalScore,
@@ -412,6 +417,14 @@ export async function runAiDesignerPipeline(
           }
         : {}),
     };
+
+  if (options.workspaceId || options.clientId) {
+    finalSpec.metadata = {
+      ...finalSpec.metadata,
+      ...(options.workspaceId ? { workspaceId: options.workspaceId } : {}),
+      ...(options.clientId ? { clientId: options.clientId } : {}),
+    };
+  }
 
   const initialScore = quality.report.initialScore;
   const finalScore = quality.report.finalScore;

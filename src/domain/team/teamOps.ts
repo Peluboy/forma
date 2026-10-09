@@ -1,4 +1,5 @@
-export type WorkspaceRole = "owner" | "editor" | "reviewer" | "viewer";
+export type WorkspaceRole =
+  "owner" | "admin" | "editor" | "designer" | "reviewer" | "viewer";
 
 export type WorkspaceAction =
   "view" | "publish" | "manage_members" | "approve" | "audit";
@@ -18,6 +19,13 @@ export type Workspace = {
   updatedAt: string;
   ownerId: string;
   members: WorkspaceMember[];
+  type?: "personal" | "agency" | "team";
+  description?: string;
+  settings?: {
+    defaultProjectVisibility?: "workspace" | "private";
+    allowTemplateSharing?: boolean;
+    allowPublicTemplatePublishing?: boolean;
+  };
 };
 
 export type PublicationKind = "project" | "template" | "skill" | "brand";
@@ -55,7 +63,9 @@ export type WorkspaceMembership = {
 const ROLE_RANK: Record<WorkspaceRole, number> = {
   viewer: 1,
   reviewer: 2,
+  designer: 3,
   editor: 3,
+  admin: 3.5,
   owner: 4,
 };
 
@@ -70,7 +80,9 @@ const ACTION_MIN_ROLE: Record<WorkspaceAction, WorkspaceRole> = {
 export function isWorkspaceRole(value: unknown): value is WorkspaceRole {
   return (
     value === "owner" ||
+    value === "admin" ||
     value === "editor" ||
+    value === "designer" ||
     value === "reviewer" ||
     value === "viewer"
   );
@@ -140,6 +152,7 @@ export function canPerform(
   action: WorkspaceAction,
 ): boolean {
   if (!role) return false;
+  if (action === "manage_members") return role === "owner" || role === "admin";
   return ROLE_RANK[role] >= ROLE_RANK[ACTION_MIN_ROLE[action]];
 }
 

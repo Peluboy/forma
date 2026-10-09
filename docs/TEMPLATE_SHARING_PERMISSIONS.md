@@ -62,6 +62,14 @@ true. Cannot edit, approve, or change the original's visibility.
 **FORK OWNER** — owns the fork as a new lineage root, can edit it, and the fork
 keeps lineage to the original. The fork never mutates the original.
 
+## Phase 7 Agency Workspace Integration
+
+In Phase 7 (Agency Workspace v1):
+- A template can be scoped to a `workspaceId` (agency-wide) or `clientId` (client-specific).
+- `canShareWorkspaceTemplate(user, template, workspace)` checks that the user is an `owner` or `admin` of the workspace.
+- `forkTemplateRecord` accepts `workspaceId?: string; clientId?: string;`, allowing public or shared templates to be directly imported/forked into an agency workspace or client library.
+- Client-scoped templates are strictly isolated and never leaked across sibling clients.
+
 ## Tests
 
 `tests/template-sharing.test.ts` covers every rule above, including stranger

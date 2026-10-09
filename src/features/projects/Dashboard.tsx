@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowUpRight,
   FileImage,
@@ -9,6 +9,9 @@ import {
   Search,
   Settings,
   CircleHelp,
+  Building2,
+  Briefcase,
+  User,
 } from "lucide-react";
 import { api, useAccount } from "../../shared/api/api";
 import {
@@ -28,6 +31,12 @@ import {
   normalizeBrand,
   readGuestBrand,
 } from "../../domain/design/designSystem";
+import {
+  LocalStorageWorkspaceStore,
+  LocalStorageClientStore,
+  type WorkspaceRecord,
+  type ClientRecord,
+} from "../../domain/workspace";
 import "./dashboard.css";
 
 export default function Dashboard() {
@@ -40,6 +49,33 @@ export default function Dashboard() {
   const [retry, setRetry] = useState(0);
   const [jobTemplate, setJobTemplate] = useState<Project | null>(null);
   const [brandName, setBrandName] = useState("");
+  const [workspaces, setWorkspaces] = useState<WorkspaceRecord[]>([]);
+  const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [scopeFilter, setScopeFilter] = useState<string>("all");
+  const [templateFilter, setTemplateFilter] = useState<string>("all");
+
+  useEffect(() => {
+    const wsStore = new LocalStorageWorkspaceStore();
+    const clStore = new LocalStorageClientStore();
+    const localWs = wsStore.list();
+    const localCl = clStore.list();
+
+    if (session.user) {
+      api<{ workspaces: WorkspaceRecord[] }>("/workspaces")
+        .then((res) => {
+          const merged = [...(res.workspaces || [])];
+          for (const lw of localWs) {
+            if (!merged.some((m) => m.id === lw.id)) merged.push(lw);
+          }
+          setWorkspaces(merged);
+        })
+        .catch(() => setWorkspaces(localWs));
+      setClients(localCl);
+    } else {
+      setWorkspaces(localWs);
+      setClients(localCl);
+    }
+  }, [session.user?.id]);
   useEffect(() => {
     if (!ready) return;
     if (!session.user) {
@@ -104,8 +140,39 @@ export default function Dashboard() {
       setError("Browser storage is unavailable. Enable it to start a design.");
     }
   }
+  const clientMap = useMemo(
+    () => new Map(clients.map((c) => [c.id, c.name])),
+    [clients],
+  );
+  const workspaceMap = useMemo(
+    () => new Map(workspaces.map((w) => [w.id, w.name])),
+    [workspaces],
+  );
+
   const visible = projects
-    .filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase()))
+    .filter((p) => {
+      if (
+        query.trim() &&
+        !p.name.toLowerCase().includes(query.trim().toLowerCase())
+      ) {
+        return false;
+      }
+      if (templateFilter !== "all" && p.template !== templateFilter) {
+        return false;
+      }
+      if (scopeFilter === "personal") {
+        return !p.workspaceId;
+      }
+      if (scopeFilter.startsWith("workspace:")) {
+        const wsId = scopeFilter.slice("workspace:".length);
+        return p.workspaceId === wsId;
+      }
+      if (scopeFilter.startsWith("client:")) {
+        const clId = scopeFilter.slice("client:".length);
+        return p.clientId === clId;
+      }
+      return true;
+    })
     .sort((a, b) =>
       sort === "name"
         ? a.name.localeCompare(b.name)
@@ -297,8 +364,8 @@ export default function Dashboard() {
                   : "Saved in this browser."}
               </p>
             </div>
-            {/* Search + sort */}
-            <div className="flex gap-2 items-center max-[600px]:w-full">
+            {/* Search + filter + sort */}
+            <div className="flex flex-wrap gap-2 items-center max-[600px]:w-full">
               <label className="flex items-center gap-2 h-8 px-[10px] border border-border rounded-sm bg-bg-panel text-text-tertiary max-[600px]:flex-1 min-w-0">
                 <Search size={16} strokeWidth={1.75} />
                 <input
@@ -306,18 +373,62 @@ export default function Dashboard() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search"
-                  className="min-w-0 border-0 bg-transparent text-text-primary w-[180px] text-sm max-[600px]:w-full"
+                  className="min-w-0 border-0 bg-transparent text-text-primary w-[140px] text-sm max-[600px]:w-full"
                 />
               </label>
+
+              <select
+                aria-label="Filter by scope"
+                value={scopeFilter}
+                onChange={(e) => setScopeFilter(e.target.value)}
+                className="h-8 border border-border rounded-sm bg-bg-panel text-text-primary px-2 text-xs max-[600px]:shrink-0"
+              >
+                <option value="all">All Scopes</option>
+                <option value="personal">Personal only</option>
+                {workspaces.map((w) => (
+                  <option key={w.id} value={`workspace:${w.id}`}>
+                    Workspace: {w.name}
+                  </option>
+                ))}
+                {clients.map((c) => (
+                  <option key={c.id} value={`client:${c.id}`}>
+                    Client: {c.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                aria-label="Filter by template"
+                value={templateFilter}
+                onChange={(e) => setTemplateFilter(e.target.value)}
+                className="h-8 border border-border rounded-sm bg-bg-panel text-text-primary px-2 text-xs max-[600px]:shrink-0"
+              >
+                <option value="all">All Templates</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+
               <select
                 aria-label="Sort designs"
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
-                className="h-8 border border-border rounded-sm bg-bg-panel text-text-primary px-[10px] text-sm max-[600px]:shrink-0"
+                className="h-8 border border-border rounded-sm bg-bg-panel text-text-primary px-[10px] text-xs max-[600px]:shrink-0"
               >
                 <option value="recent">Recent</option>
                 <option value="name">Name</option>
               </select>
+
+              <a
+                href="/workspaces"
+                className="h-8 inline-flex items-center gap-1.5 px-2.5 rounded-sm border border-border bg-bg-panel text-xs text-text-secondary hover:text-text-primary transition-colors"
+                title="Manage workspaces & clients"
+              >
+                <Building2 size={14} className="text-accent" />
+                Workspaces
+              </a>
             </div>
           </div>
 
@@ -358,7 +469,39 @@ export default function Dashboard() {
                     <strong className="block text-sm font-[550]">
                       {p.name}
                     </strong>
-                    <small className="text-text-tertiary text-xs">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-text-tertiary">
+                      <span>
+                        {templates.find((t) => t.id === p.template)?.name ||
+                          p.template}
+                      </span>
+                      <span>·</span>
+                      <span className="inline-flex items-center gap-1 font-medium text-text-secondary">
+                        {p.clientId ? (
+                          <>
+                            <Briefcase size={11} className="text-accent" />
+                            {clientMap.get(p.clientId) || "Client"}
+                          </>
+                        ) : p.workspaceId ? (
+                          <>
+                            <Building2 size={11} className="text-accent" />
+                            {workspaceMap.get(p.workspaceId) || "Workspace"}
+                          </>
+                        ) : (
+                          <>
+                            <User size={11} /> Personal
+                          </>
+                        )}
+                      </span>
+                      {typeof p.metadata?.qualityScore === "number" && (
+                        <>
+                          <span>·</span>
+                          <span className="text-emerald-600 font-semibold">
+                            {p.metadata.qualityScore}/100
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <small className="block text-text-tertiary text-xs mt-0.5">
                       Edited{" "}
                       {new Date(p.updatedAt).toLocaleDateString(undefined, {
                         month: "short",

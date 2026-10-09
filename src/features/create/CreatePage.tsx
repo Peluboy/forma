@@ -11,6 +11,11 @@ import { Button } from "../../shared/components/ui/Button";
 import { ThemeToggle } from "../../shared/components/ThemeToggle";
 import { START_KEY } from "../../shared/navigation";
 import { CreativeDirections } from "./components/CreativeDirections";
+import { CreateWorkspaceSelector } from "./CreateWorkspaceSelector";
+import {
+  CreatePipelineProgressView,
+  CreatePipelineResultView,
+} from "./CreatePipelineResult";
 import {
   runAiDesignerPipeline,
   type DesignerPipelineResult,
@@ -30,7 +35,6 @@ import {
   analyzeImageReference,
   type AnalysisProviderId,
 } from "./lib/referenceAnalysis";
-import { CheckCircle2, ExternalLink } from "lucide-react";
 import {
   readGuestBrand,
   normalizeBrand,
@@ -45,6 +49,12 @@ import {
   readManuscriptFile,
   readReferenceFile,
 } from "../editor/lib/fileImports";
+import {
+  LocalStorageWorkspaceStore,
+  LocalStorageClientStore,
+  type WorkspaceRecord,
+  type ClientRecord,
+} from "../../domain/workspace/index";
 
 const familyChoices = [
   {
@@ -134,7 +144,30 @@ export default function CreatePage() {
   const [templateRecords, setTemplateRecords] = useState<
     TemplateFamilyRecord[]
   >([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("template") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("workspace") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [selectedClientId, setSelectedClientId] = useState<string>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("client") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [workspaces, setWorkspaces] = useState<WorkspaceRecord[]>([]);
+  const [clients, setClients] = useState<ClientRecord[]>([]);
+
   useEffect(() => {
     try {
       sessionStorage.removeItem(CREATE_DRAFT_KEY);
@@ -142,6 +175,35 @@ export default function CreatePage() {
       /* private browser storage may be disabled */
     }
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!session.user) {
+      const localWs = new LocalStorageWorkspaceStore().list();
+      setWorkspaces(localWs);
+      if (selectedWorkspaceId) {
+        setClients(new LocalStorageClientStore().list(selectedWorkspaceId));
+      }
+    } else {
+      void api<{ workspaces: WorkspaceRecord[] }>("/workspaces")
+        .then((res) => {
+          setWorkspaces(res.workspaces || []);
+          if (selectedWorkspaceId) {
+            return api<{ clients: ClientRecord[] }>(
+              `/workspaces/${encodeURIComponent(selectedWorkspaceId)}/clients`,
+            ).then((cr) => setClients(cr.clients || []));
+          }
+        })
+        .catch(() => {
+          const localWs = new LocalStorageWorkspaceStore().list();
+          setWorkspaces(localWs);
+          if (selectedWorkspaceId) {
+            setClients(new LocalStorageClientStore().list(selectedWorkspaceId));
+          }
+        });
+    }
+  }, [ready, session.user?.id, selectedWorkspaceId]);
+
   useEffect(() => {
     if (!templateAuthoringEnabled()) return;
     try {
@@ -153,11 +215,50 @@ export default function CreatePage() {
       setTemplateRecords([]);
     }
   }, []);
+
+  const scopedTemplateRecords = useMemo(() => {
+    return templateRecords
+      .filter((record) => {
+        if (
+          selectedClientId &&
+          record.clientId &&
+          record.clientId !== selectedClientId
+        ) {
+          return false;
+        }
+        if (!selectedClientId && record.clientId) {
+          return false;
+        }
+        if (
+          selectedWorkspaceId &&
+          record.workspaceId &&
+          record.workspaceId !== selectedWorkspaceId
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const aClient = a.clientId === selectedClientId ? 1 : 0;
+        const bClient = b.clientId === selectedClientId ? 1 : 0;
+        if (aClient !== bClient) return bClient - aClient;
+
+        const aWs = a.workspaceId === selectedWorkspaceId ? 1 : 0;
+        const bWs = b.workspaceId === selectedWorkspaceId ? 1 : 0;
+        if (aWs !== bWs) return bWs - aWs;
+
+        return a.name.localeCompare(b.name);
+      });
+  }, [templateRecords, selectedWorkspaceId, selectedClientId]);
+
   const selectedTemplate = useMemo(
     () =>
+      scopedTemplateRecords.find(
+        (record) => record.id === selectedTemplateId,
+      ) ??
       templateRecords.find((record) => record.id === selectedTemplateId) ??
       null,
-    [templateRecords, selectedTemplateId],
+    [scopedTemplateRecords, templateRecords, selectedTemplateId],
   );
   useEffect(() => {
     if (!ready) return;
@@ -301,6 +402,8 @@ export default function CreatePage() {
                   : {}),
               }
             : null,
+          workspaceId: selectedWorkspaceId || undefined,
+          clientId: selectedClientId || undefined,
           onProgress: (u) => {
             setPipelineProgress({
               stage: u.stage,
@@ -347,12 +450,15 @@ export default function CreatePage() {
   function openPipelineProject() {
     if (!pipelineResult) return;
     try {
+      const proj = pipelineResult.project;
+      if (selectedWorkspaceId) proj.workspaceId = selectedWorkspaceId;
+      if (selectedClientId) proj.clientId = selectedClientId;
       sessionStorage.setItem(
         START_KEY,
         JSON.stringify({
           owner: session.user?.id || "guest",
           start: "generated",
-          project: pipelineResult.project,
+          project: proj,
         }),
       );
       location.assign("/editor");
@@ -366,6 +472,8 @@ export default function CreatePage() {
     const project = projects[index];
     if (!project) return;
     try {
+      if (selectedWorkspaceId) project.workspaceId = selectedWorkspaceId;
+      if (selectedClientId) project.clientId = selectedClientId;
       sessionStorage.setItem(
         START_KEY,
         JSON.stringify({
@@ -408,6 +516,17 @@ export default function CreatePage() {
             choose what becomes final.
           </p>
           <div className="space-y-6">
+            <CreateWorkspaceSelector
+              workspaces={workspaces}
+              clients={clients}
+              selectedWorkspaceId={selectedWorkspaceId}
+              selectedClientId={selectedClientId}
+              onSelectWorkspace={(id) => {
+                setSelectedWorkspaceId(id);
+                setSelectedClientId("");
+              }}
+              onSelectClient={setSelectedClientId}
+            />
             <fieldset>
               <legend className="mb-2 text-sm font-semibold">
                 What are you making?
@@ -493,8 +612,13 @@ export default function CreatePage() {
                           <option value="">
                             Forma Editorial Report (built-in, approved)
                           </option>
-                          {templateRecords.map((record) => (
+                          {scopedTemplateRecords.map((record) => (
                             <option key={record.id} value={record.id}>
+                              {record.clientId === selectedClientId
+                                ? "[Client] "
+                                : record.workspaceId === selectedWorkspaceId
+                                  ? "[Workspace] "
+                                  : ""}
                               {record.name} · v{record.versionNumber}
                               {record.source === "forked" ? " · forked" : ""}
                             </option>
@@ -780,93 +904,12 @@ export default function CreatePage() {
 
         {/* Right Section: Either Pipeline Progress/Result OR Creative Directions */}
         {pipelineProgress ? (
-          <section className="flex flex-col items-center justify-center p-8 bg-bg-panel border border-border rounded-2xl min-h-[400px]">
-            <div className="w-full max-w-md space-y-4 text-center">
-              <div className="w-12 h-12 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto text-accent animate-pulse">
-                <Sparkles size={24} />
-              </div>
-              <h3 className="text-base font-semibold text-text-primary">
-                Generating Report Draft
-              </h3>
-              <p className="text-sm text-text-secondary">
-                {pipelineProgress.message}
-              </p>
-              <div className="w-full bg-bg-page border border-border rounded-full h-2.5 overflow-hidden">
-                <div
-                  className="bg-accent h-full transition-all duration-300 rounded-full"
-                  style={{ width: `${pipelineProgress.percent}%` }}
-                />
-              </div>
-              <div className="text-xs text-text-tertiary font-mono">
-                {pipelineProgress.percent}% complete
-              </div>
-            </div>
-          </section>
+          <CreatePipelineProgressView progress={pipelineProgress} />
         ) : pipelineResult ? (
-          <section className="flex flex-col gap-6">
-            <div className="bg-bg-panel border border-border rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={18} className="text-emerald-500" />
-                  <h3 className="font-semibold text-text-primary text-base">
-                    Report Generation Complete
-                  </h3>
-                </div>
-                <p className="text-xs text-text-secondary mt-1">
-                  {pipelineResult.finalSpec.pages.length} pages structured with{" "}
-                  <strong>Forma Editorial Report</strong> | Quality:{" "}
-                  <span className="text-emerald-600 font-semibold">
-                    {pipelineResult.quality.final.overallScore}/100
-                  </span>{" "}
-                  | Exact Copy:{" "}
-                  <span className="text-emerald-600 font-semibold">
-                    100% Conforming
-                  </span>
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <a
-                  href="/dev/pipeline"
-                  className="text-xs text-text-secondary hover:text-text-primary px-3 py-2 rounded-lg border border-border inline-flex items-center gap-1.5 transition-colors"
-                >
-                  Inspect Lab <ExternalLink size={14} />
-                </a>
-                <Button
-                  variant="primary"
-                  onClick={openPipelineProject}
-                  className="inline-flex items-center gap-2"
-                >
-                  Open in Editor <ExternalLink size={16} />
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3">
-              {pipelineResult.finalSpec.pages.map((p, idx) => (
-                <div
-                  key={p.id}
-                  className="group relative rounded-xl border border-border bg-bg-panel overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className="px-3 py-1.5 border-b border-border bg-bg-page flex items-center justify-between text-[11px]">
-                    <span className="font-semibold text-text-primary">
-                      Page {idx + 1}
-                    </span>
-                    <span className="text-text-secondary font-mono">
-                      {p.metadata?.layoutId as string}
-                    </span>
-                  </div>
-                  <div
-                    className="p-1.5 bg-white flex items-center justify-center overflow-hidden"
-                    style={{ aspectRatio: "612/792" }}
-                    dangerouslySetInnerHTML={{
-                      __html: pipelineResult.pageSvgs[idx] || "",
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
+          <CreatePipelineResultView
+            pipelineResult={pipelineResult}
+            onOpenProject={openPipelineProject}
+          />
         ) : (
           <CreativeDirections
             concepts={concepts}

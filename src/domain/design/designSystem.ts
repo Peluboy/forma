@@ -30,6 +30,9 @@ export type BrandSystem = {
   palette: string[];
   spacingNote: string;
   updatedAt: string;
+  /** Phase 7: Agency Workspace and Client scoping */
+  workspaceId?: string;
+  clientId?: string;
 };
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -54,6 +57,8 @@ export function defaultBrandSystem(
     palette: partial?.palette || [],
     spacingNote: partial?.spacingNote || "",
     updatedAt: partial?.updatedAt || new Date().toISOString(),
+    ...(partial?.workspaceId ? { workspaceId: partial.workspaceId } : {}),
+    ...(partial?.clientId ? { clientId: partial.clientId } : {}),
   };
 }
 
@@ -112,6 +117,10 @@ export function normalizeBrand(value: unknown): BrandSystem {
         Number.isFinite(Date.parse(raw.updatedAt))
           ? raw.updatedAt
           : new Date().toISOString(),
+      ...(typeof raw.workspaceId === "string"
+        ? { workspaceId: raw.workspaceId }
+        : {}),
+      ...(typeof raw.clientId === "string" ? { clientId: raw.clientId } : {}),
     });
   }
   return defaultBrandSystem({

@@ -86,6 +86,8 @@ export function createTemplateFamilyRecord(
     ...(input.reference ? { reference: input.reference } : {}),
     ...(input.sharing ? { sharing: input.sharing } : {}),
     ...(input.forkedFrom ? { forkedFrom: input.forkedFrom } : {}),
+    ...(input.workspaceId ? { workspaceId: input.workspaceId } : {}),
+    ...(input.clientId ? { clientId: input.clientId } : {}),
     templateId,
     versionNumber: 1,
     changelog: "Initial version.",

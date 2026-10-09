@@ -1,5 +1,37 @@
 # Delivery progress
 
+## October 9, 2026: Phase 7 — Agency Workspace v1
+
+- **Audit-first**: `docs/AGENCY_WORKSPACE_PHASE_7.md` documents current ownership models, personal vs owner-scoped records, workspace and client scoping additions, local and hosted persistence capabilities, and explicit boundaries (no billing, no paid seats, no marketplace monetization, no real-time multi-cursor collaboration, no client login portal, no CRM).
+- **Domain module** `src/domain/workspace/`:
+  - `types.ts`: `WorkspaceRecord` (version `"1.0"`, type `"personal" | "agency" | "team"`), `WorkspaceMember` (`owner`, `admin`, `designer`, `viewer`), `WorkspaceSettings`, `WorkspaceActor`, `WorkspaceContext`.
+  - `client.ts`: `ClientRecord` (`workspaceId`, `name`, `status`, `brandIds`, `templateFamilyRecordIds`, `projectIds`, `notes`).
+  - `validation.ts`: Runtime validators `validateWorkspace`, `validateClient`, `isWorkspaceRecord`, `isClientRecord`.
+  - `membership.ts`: Deterministic membership helpers `addMemberToWorkspace`, `removeMemberFromWorkspace`, `updateMemberRole`, `findWorkspaceMember`.
+  - `permissions.ts`: Pure permission functions `canViewWorkspace`, `canEditWorkspace`, `canManageMembers`, `canCreateClient`, `canEditClient`, `canArchiveClient`, `canCreateWorkspaceTemplate`, `canApproveWorkspaceTemplate`, `canUseWorkspaceTemplate`, `canCreateClientProject`, `canViewClientProject`, `canShareWorkspaceTemplate`.
+  - `context.ts`: Seamless fallback `resolveCurrentWorkspaceContext` ensuring legacy records and guest users continue without interruption.
+  - `activity.ts`: Lightweight audit/activity tracking `WorkspaceActivityEvent`, `createWorkspaceActivity`.
+  - `records.ts`: Factories `createPersonalWorkspace`, `createAgencyWorkspace`, `createClientRecord` and persistent stores (`MemoryWorkspaceStore`, `MemoryClientStore`, `LocalStorageWorkspaceStore`, `LocalStorageClientStore`).
+- **Record scoping**:
+  - `Project`: Added optional `workspaceId` and `clientId`.
+  - `TemplateFamilyRecord`: Added optional `workspaceId` and `clientId`.
+  - `BrandSystem`: Added optional `workspaceId` and `clientId`.
+  - `ReferenceDesignProfile`: Added optional `workspaceId` and `clientId`.
+  - `DesignerPipelineOptions` & `DesignSpec.metadata`: Propagate `workspaceId` and `clientId` to generated document outputs.
+- **Hosted API & Persistence**:
+  - Supabase migration `202610090001_workspace_and_client_kinds.sql`: Enables `workspace` and `client` record kinds.
+  - Endpoints: `GET/POST /api/workspaces`, `GET/PUT/DELETE /api/workspaces/:id`, `POST /api/workspaces/:id/members`, `GET/POST /api/workspaces/:workspaceId/clients`, `GET/PUT/DELETE /api/clients/:id`, `POST /api/clients/:id/archive`.
+- **UI & Workflows**:
+  - `/workspaces`: Full workspace and client management page with client dashboard, member invitation, and template scoping.
+  - Client Dashboard: Dedicated views for client templates, client projects, and creative brief/notes.
+  - `/create` flow: Workspace and client selector; template dropdown automatically prioritizes client-specific templates first, workspace templates next, and isolates sibling client templates.
+  - Dashboard: Added filtering by Scope (All, Personal, Workspace, Client) and Template, plus scope badges and quality score chips on project cards.
+- **Benchmark Suite**: `npm run benchmark:workspaces` verifies 12 cases: personal workspace, agency workspace, client creation, client template assignment, client project generation, client template prioritization, sibling client template isolation, forking public templates into workspaces, archived client hiding, viewer generation denial, designer project creation, and legacy personal backward compatibility. (12/12 passed).
+- **Tests & Quality Gate**:
+  - `tests/workspace.test.ts`: 9 comprehensive test suites for domain models, role boundaries, template scoping, forking, and legacy compatibility.
+  - `tests/workspace-api.test.ts`: Backend API test suite verifying workspace CRUD, membership, scoping, and cross-workspace access rejection.
+  - Total tests: 190 unit tests + 5 backend tests passing; `npm run lint` clean; production build succeeded; all benchmarks passing.
+
 ## October 9, 2026: Phase 6 — Template Distribution, Sharing & Forking v1
 
 - **Audit-first**: `docs/TEMPLATE_DISTRIBUTION_PHASE_6.md` records what supported sharing/forking before Phase 6 (nothing at the record level), what was owner-private only, the lineage/permission/persistence surface, and what is explicitly deferred. It is not a marketplace: no payments, monetization, ratings, comments, team roles, search ranking, or SEO surfaces.

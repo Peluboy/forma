@@ -258,3 +258,13 @@ top of them without changing the runtime `TemplateFamily` model:
 
 Still **not** a marketplace: no payments, ratings, comments, team roles, or
 public search ranking.
+
+---
+
+## Phase 7 update — agency workspace & client scoping
+
+Phase 7 adds workspace and client scoping to `TemplateFamilyRecord`:
+- `workspaceId?: string`: templates accessible across all clients in an agency workspace.
+- `clientId?: string`: templates dedicated specifically to a single client.
+- Create flow prioritization: client-scoped approved templates appear first.
+- See [AGENCY_WORKSPACE_PHASE_7.md](AGENCY_WORKSPACE_PHASE_7.md).

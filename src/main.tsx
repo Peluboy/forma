@@ -49,6 +49,7 @@ const TemplateGalleryPage = lazy(
 const PublicTemplatePage = lazy(
   () => import("./features/templates/PublicTemplatePage"),
 );
+const WorkspacePage = lazy(() => import("./features/workspaces/WorkspacePage"));
 const path = location.pathname.replace(/\/$/, "") || "/";
 const query = new URLSearchParams(location.search);
 // Preserve payment and password-reset links issued by the previous release.
@@ -60,6 +61,8 @@ const screen = path.startsWith("/review/") ? (
   <PublicTemplatePage token={path.split("/")[2]} />
 ) : path === "/dev/template-gallery" ? (
   <TemplateGalleryPage />
+) : path === "/workspaces" ? (
+  <WorkspacePage />
 ) : path === "/dashboard" ? (
   <Dashboard />
 ) : path === "/dev/reference" ? (

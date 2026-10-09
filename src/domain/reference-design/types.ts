@@ -315,6 +315,8 @@ export interface ReferenceDesignProfile {
   confidence: ReferenceConfidence;
   warnings: ReferenceWarning[];
   metadata?: Record<string, unknown>;
+  workspaceId?: string;
+  clientId?: string;
 }
 
 // ─── Reference template gate (Part L) ────────────────────────────────────────
