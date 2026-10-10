@@ -172,3 +172,88 @@ export function canShareWorkspaceTemplate(
   }
   return template.status === "approved" && !!template.approval?.approved;
 }
+
+export type ExportPermissionResult = {
+  allowed: boolean;
+  reason?: string;
+  role?: WorkspaceMemberRole | null;
+  archived: boolean;
+};
+
+/**
+ * Export is a privileged action: viewers and non-members cannot download
+ * workspace/client projects. Personal projects (no workspaceId) export for
+ * the signed-in or guest owner who already has the record. Archived
+ * clients/projects still export so finished work can be delivered, but the
+ * caller should surface a warning.
+ */
+export function canExportProject(
+  user: WorkspaceActor | null | undefined,
+  project: Project,
+  workspace?: WorkspaceRecord | null,
+  client?: ClientRecord | null,
+): ExportPermissionResult {
+  const archived =
+    client?.status === "archived" ||
+    project.metadata?.archived === true ||
+    project.metadata?.status === "archived";
+
+  if (!project.workspaceId) {
+    return { allowed: true, role: null, archived };
+  }
+
+  if (!workspace) {
+    return {
+      allowed: false,
+      reason: "Workspace context is required to export this project.",
+      role: null,
+      archived,
+    };
+  }
+
+  if (project.workspaceId !== workspace.id) {
+    return {
+      allowed: false,
+      reason: "This project belongs to another workspace.",
+      role: null,
+      archived,
+    };
+  }
+
+  if (client && client.workspaceId !== workspace.id) {
+    return {
+      allowed: false,
+      reason: "This client belongs to another workspace.",
+      role: null,
+      archived,
+    };
+  }
+
+  if (client && project.clientId && client.id !== project.clientId) {
+    return {
+      allowed: false,
+      reason: "This project belongs to another client.",
+      role: null,
+      archived,
+    };
+  }
+
+  const role = getMemberRole(user, workspace);
+  if (!role) {
+    return {
+      allowed: false,
+      reason: "Only workspace members can export this project.",
+      role: null,
+      archived,
+    };
+  }
+  if (role === "viewer") {
+    return {
+      allowed: false,
+      reason: "View only access cannot export.",
+      role,
+      archived,
+    };
+  }
+  return { allowed: true, role, archived };
+}

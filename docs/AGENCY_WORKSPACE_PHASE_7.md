@@ -136,6 +136,7 @@ Pure functions of actor + target record:
 - `canUseWorkspaceTemplate(user, workspace, template)`
 - `canCreateClientProject(user, client, workspace)`
 - `canViewClientProject(user, project, workspace)`
+- `canExportProject(user, project, workspace, client)` — owner/admin/designer only; viewers and non-members are blocked. Archived clients still export with a warning. Personal projects (no `workspaceId`) remain exportable.
 - `canShareWorkspaceTemplate(user, template, workspace)`
 
 Role hierarchy:

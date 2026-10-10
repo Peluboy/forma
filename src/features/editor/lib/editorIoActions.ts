@@ -1,5 +1,10 @@
 import type { Project } from "../../../domain/design/model";
-import { post } from "../../../shared/api/api";
+import {
+  LocalStorageClientStore,
+  LocalStorageWorkspaceStore,
+  type WorkspaceActor,
+} from "../../../domain/workspace";
+import { post, type User } from "../../../shared/api/api";
 import type { Analysis } from "../dialogs/AnalysisReview";
 import { readManuscriptFile, readReferenceFile } from "./fileImports";
 
@@ -7,6 +12,7 @@ type EditorIoOptions = {
   project: Project;
   provider: "local" | "openai" | "gemini";
   signedIn: boolean;
+  user: User | null;
   exportFormat: string;
   update: (patch: Partial<Project>) => void;
   setDraft: (text: string) => void;
@@ -28,6 +34,7 @@ export function createEditorIoActions(options: EditorIoOptions) {
     project,
     provider,
     signedIn,
+    user,
     exportFormat,
     update,
     setDraft,
@@ -84,6 +91,44 @@ export function createEditorIoActions(options: EditorIoOptions) {
   async function exportDesign() {
     setExporting(true);
     try {
+      if (exportFormat === "pdf" || exportFormat === "pdf-native") {
+        const { runNativePdfExport } =
+          await import("../../../domain/export/pdfExport");
+        const { downloadFile } = await import("./exports");
+        const actor: WorkspaceActor | null = user
+          ? { userId: user.id, email: user.email, name: user.name }
+          : null;
+        const workspace = project.workspaceId
+          ? new LocalStorageWorkspaceStore().get(project.workspaceId)
+          : null;
+        const client = project.clientId
+          ? new LocalStorageClientStore().get(project.clientId)
+          : null;
+        const job = await runNativePdfExport({
+          project,
+          user: actor,
+          workspace,
+          client,
+          clientName: client?.name,
+          projectName: project.name,
+        });
+        if (job.status === "blocked") {
+          throw new Error(job.error || "Export blocked");
+        }
+        if (job.status !== "completed" || !job.output) {
+          throw new Error(job.error || "Native PDF export failed.");
+        }
+        const blob =
+          job.output.blob ||
+          new Blob([Uint8Array.from(job.output.bytes || [])], {
+            type: "application/pdf",
+          });
+        downloadFile(blob, job.output.filename);
+        setToast("Your file is ready. Download started.");
+        setGuideExported(true);
+        closeDialog();
+        return;
+      }
       const { exportProject } = await import("./exports");
       await exportProject(project, exportFormat);
       setToast("Your file is ready. Download started.");

@@ -112,7 +112,7 @@ Save the current design before making a review link. A link shares a snapshot, n
 
 | Symptom | Action |
 |---|---|
-| Export disabled | Resolve overflow and map all nonempty reference fields. JSON backup remains available. |
+| Export disabled | For PNG, JPG, SVG, or ZIP, resolve overflow and map all nonempty reference fields. PDF still downloads with a tight-text note. JSON backup remains available. |
 | Text too small | Enlarge its region or intentionally revise the manuscript outside automatic fitting. |
 | Old text visible | Enlarge/reposition the cover and check its color. Complex backgrounds require external retouching. |
 | Cloud save conflict | Keep a JSON backup, load the newer saved version, and reconcile changes. |
@@ -124,13 +124,14 @@ Design checks assess measurable text fit and mapping; they do not certify readab
 
 ## Export choices and campaign packs
 
-- PNG: rendered 1080-pixel-wide graphic.
+- PNG: rendered 2160-pixel-wide graphic (3× the canvas) with a transparent page background.
+- JPG: same 3× render with an opaque page background.
 - SVG: scalable artwork with editable text; reference images stay embedded.
-- PDF: flattened rendered image in a PDF page, not a tagged/editable text document.
+- PDF: selectable text, not a picture of the page. Tight text warns but does not block the download.
 - Forma JSON: editable project backup, including source reference and manuscript.
 
 Editable backups now include a file-format version automatically. Continue using **File → Save project file** and **File → Open project file**; no setup or conversion step is needed. Older Forma backups still open. If a file needs features this editor does not support, Forma explains the problem and leaves the current design unchanged. Keep that original file for a compatible version. New backups require this version of Forma or later; older app versions may not recognize them.
-- Campaign ZIP (templates): portrait (1080×1350), square (1080×1080), and story (1080×1920) PNGs, `approved-copy.txt`, and `editable.forma.json`. Every variant must pass fitting checks; otherwise the ZIP is not downloaded. Reference-mode campaigns are disabled to avoid silently changing source proportions.
+- Campaign ZIP (templates): portrait (2160×2700), square (2160×2160), and story (2160×3840) PNGs, `approved-copy.txt`, and `editable.forma.json`. Every variant must pass fitting checks; otherwise the ZIP is not downloaded. Reference-mode campaigns are disabled to avoid silently changing source proportions.
 
 ## Saved templates, brand settings, and review links
 

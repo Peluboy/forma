@@ -169,3 +169,9 @@ export function assessDeliverableQuality(
 ```
 
 The Editor Quality Panel and Dev Lab display these verdicts prominently.
+
+---
+
+## 7. Native PDF export (Phase 8)
+
+`checkEditorExportConsistency` remains a **FlowDocument** structural check. Native PDF export compares DesignSpec to written PDF bytes in `ExportFidelityReport` (`src/domain/export/`). The existing raster editor PDF is still available as an explicit flattened fallback and is not used silently by the native path.

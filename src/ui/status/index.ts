@@ -5,6 +5,8 @@ export {
   mapTemplateStatus,
   mapReferenceConfidence,
   mapWorkspaceRole,
+  mapExportPreflight,
+  mapExportFidelity,
   type StatusMeta,
 } from "./statusMap";
 export { StatusBadge, type StatusBadgeProps } from "./StatusBadge";

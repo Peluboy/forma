@@ -1,5 +1,15 @@
 # Delivery progress
 
+## October 9, 2026: Phase 8 — Native Export Engine v1
+
+- **Audit-first**: `docs/NATIVE_EXPORT_ENGINE_PHASE_8.md` records current raster PDF/SVG/PNG/PPTX paths, what is selectable vs flattened, and what Phase 8 replaces.
+- **Approach**: jsPDF (already a dependency). DesignSpec → preflight → native PDF with selectable text, vectors, embedded images, structured tables, and vector charts. No new PDF library. No font files copied or shipped.
+- **Domain module** `src/domain/export/`: job model, PDF options, renderer, preflight, fidelity, font mapping, image/table/chart helpers, metadata, file naming, workspace export permissions.
+- **UI**: Export dialog adds **PDF, native beta** with plain-English preflight. Legacy flattened PDF remains. Dev lab at `/dev/export`.
+- **Permissions**: `canExportProject` — personal owner, workspace owner/admin/designer; viewers and non-members blocked. Archived client/project still exports with a warning.
+- **Benchmark**: `npm run benchmark:exports` (12 cases).
+- **Deferred**: editable PPTX from DesignSpec, DOCX, PDF/PPTX import, CMYK, font embedding, export queue.
+
 ## October 9, 2026: Phase 7.6 — UI Rescue, Art Direction, and Product Shell Polish
 
 - **Direction**: Light-first creative studio. Warm paper background, mint accent only, charcoal dark as opt-in. Editor uses light panels and a dotted canvas. Proof at `/dev/ui-direction`.

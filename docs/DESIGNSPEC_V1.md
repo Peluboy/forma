@@ -64,6 +64,6 @@ The new Supabase migration `202610040001_records_and_reviews.sql` is independent
 
 ## Deliberately deferred
 
-No AI emits DesignSpec yet. No new canvas renderer, layout solver, reference design reconstruction, arbitrary PDF/PPTX import, object-storage migration, complete presentation adapter, rich-text editor, chart editor, agency workspace, job queue, or production DesignSpec export is included. Current document PDF remains rasterized; the Phase 0 fix prevents known text/table overflow and missing content from silently reaching visual export.
+Phase 8 adds a native PDF export path that consumes DesignSpec directly (`src/domain/export/`). Legacy editor PDFs remain rasterized and available. Editable PPTX from DesignSpec, DOCX, PDF/PPTX import, CMYK, and font-file embedding are still deferred. The Phase 0 visibility check still prevents known text/table overflow from silently reaching the flattened editor export.
 
 The intended next pipeline is: deterministic manuscript extraction and ContentGraph → bounded AI content/layout reasoning → deterministic template/layout instantiation into DesignSpec → measured fit and deterministic QA → editable canonical renderer → native export. The model may choose a pattern but should not bypass source coverage, geometry validation, brand constraints, or export preflight. Fit, QA, and export should eventually consume the **same DesignSpec** rather than three divergent legacy models.

@@ -372,10 +372,13 @@ export function canvasWidth(project: Project): number {
 export function canvasHeight(project: Project): number {
   return resolvePageSize(project).height;
 }
+/** PNG and flattened-PDF raster scale. 3× is about 216 dpi at the design size. */
+export const EXPORT_RASTER_SCALE = 3;
+
 export function outputPixels(project: Project): PageSize {
   return {
-    width: Math.round(canvasWidth(project) * 1.5),
-    height: Math.round(canvasHeight(project) * 1.5),
+    width: Math.round(canvasWidth(project) * EXPORT_RASTER_SCALE),
+    height: Math.round(canvasHeight(project) * EXPORT_RASTER_SCALE),
   };
 }
 export function unmappedFields(project: Project): FieldId[] {

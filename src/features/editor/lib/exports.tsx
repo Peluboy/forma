@@ -12,6 +12,7 @@ import {
 } from "../../../domain/design/presentation";
 import { layerFits } from "../components/TextLayers";
 import {
+  EXPORT_RASTER_SCALE,
   canvasHeight,
   canvasWidth,
   fieldIds,
@@ -55,6 +56,62 @@ export function validateExport(project: Project) {
     throw new Error("Resolve unmapped or overflowing text before exporting.");
 }
 
+async function rasterizeSvgMarkup(
+  markup: string,
+  designWidth: number,
+  designHeight: number,
+  scale = EXPORT_RASTER_SCALE,
+  extras?: {
+    mimeType?: "image/png" | "image/jpeg";
+    quality?: number;
+    background?: string;
+  },
+): Promise<Blob> {
+  const doc = new DOMParser().parseFromString(markup, "image/svg+xml");
+  const root = doc.documentElement;
+  if (!root.getAttribute("viewBox"))
+    root.setAttribute("viewBox", `0 0 ${designWidth} ${designHeight}`);
+  const pixelWidth = Math.round(designWidth * scale);
+  const pixelHeight = Math.round(designHeight * scale);
+  root.setAttribute("width", String(pixelWidth));
+  root.setAttribute("height", String(pixelHeight));
+  const blob = new Blob([new XMLSerializer().serializeToString(doc)], {
+    type: "image/svg+xml;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("Image export failed."));
+      img.src = url;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Image export failed.");
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    if (extras?.background) {
+      context.fillStyle = extras.background;
+      context.fillRect(0, 0, pixelWidth, pixelHeight);
+    }
+    context.drawImage(img, 0, 0, pixelWidth, pixelHeight);
+    const mimeType = extras?.mimeType || "image/png";
+    return await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(
+        (next) =>
+          next ? resolve(next) : reject(new Error("Image export failed.")),
+        mimeType,
+        extras?.quality,
+      ),
+    );
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 async function documentPdf(project: Project) {
   if (!project.flow) throw new Error("Document layout is missing.");
   validateExport(project);
@@ -81,42 +138,15 @@ async function documentPdf(project: Project) {
         total: pages.length,
       }),
     );
-    const doc = new DOMParser().parseFromString(html, "image/svg+xml");
-    doc.documentElement.setAttribute("width", String(width));
-    doc.documentElement.setAttribute("height", String(height));
-    const svg = new XMLSerializer().serializeToString(doc);
-    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    try {
-      const img = new Image();
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error("Document page render failed."));
-        img.src = url;
-      });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(width * 2);
-      canvas.height = Math.round(height * 2);
-      canvas
-        .getContext("2d")!
-        .drawImage(img, 0, 0, canvas.width, canvas.height);
-      const png = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob(
-          (b) => (b ? resolve(b) : reject(new Error("PDF page failed."))),
-          "image/png",
-        ),
-      );
-      pdf.addImage(
-        new Uint8Array(await png.arrayBuffer()),
-        "PNG",
-        0,
-        0,
-        width,
-        height,
-      );
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    const png = await rasterizeSvgMarkup(html, width, height);
+    pdf.addImage(
+      new Uint8Array(await png.arrayBuffer()),
+      "PNG",
+      0,
+      0,
+      width,
+      height,
+    );
   }
   return pdf;
 }
@@ -146,94 +176,81 @@ async function presentationPdf(project: Project) {
         slide: slides[i],
       }),
     );
-    const doc = new DOMParser().parseFromString(html, "image/svg+xml");
-    doc.documentElement.setAttribute("width", String(width));
-    doc.documentElement.setAttribute("height", String(height));
-    const svg = new XMLSerializer().serializeToString(doc);
-    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    try {
-      const img = new Image();
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error("Slide render failed."));
-        img.src = url;
-      });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(width * 2);
-      canvas.height = Math.round(height * 2);
-      canvas
-        .getContext("2d")!
-        .drawImage(img, 0, 0, canvas.width, canvas.height);
-      const png = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob(
-          (b) => (b ? resolve(b) : reject(new Error("PDF slide failed."))),
-          "image/png",
-        ),
-      );
-      pdf.addImage(
-        new Uint8Array(await png.arrayBuffer()),
-        "PNG",
-        0,
-        0,
-        width,
-        height,
-      );
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    const png = await rasterizeSvgMarkup(html, width, height);
+    pdf.addImage(
+      new Uint8Array(await png.arrayBuffer()),
+      "PNG",
+      0,
+      0,
+      width,
+      height,
+    );
   }
   return pdf;
 }
 
-export async function svgBlob(project: Project) {
+async function prepareGraphicSvg(
+  project: Project,
+  options?: { hidePageFill?: boolean },
+) {
   if (project.family === "document")
     throw new Error("Use PDF export for multi-page documents.");
   if (project.family === "presentation")
     throw new Error("Use PDF or PPTX export for presentations.");
   await document.fonts.ready;
   validateExport(project);
-  const html = renderToStaticMarkup(createElement(Poster, { project }));
+  const html = renderToStaticMarkup(
+    createElement(Poster, {
+      project,
+      hidePageFill: options?.hidePageFill,
+    }),
+  );
   const doc = new DOMParser().parseFromString(html, "image/svg+xml");
   const { embedProjectFonts } = await import("./fontAssets");
   await embedProjectFonts(doc, project);
-  const width = Math.round(canvasWidth(project) * 1.5);
-  const height = Math.round(canvasHeight(project) * 1.5);
+  const width = canvasWidth(project);
+  const height = canvasHeight(project);
+  doc.documentElement.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  doc.documentElement.removeAttribute("class");
+  return doc;
+}
+
+export async function svgBlob(project: Project) {
+  const doc = await prepareGraphicSvg(project);
+  const width = canvasWidth(project);
+  const height = canvasHeight(project);
   doc.documentElement.setAttribute("width", String(width));
   doc.documentElement.setAttribute("height", String(height));
-  doc.documentElement.removeAttribute("class");
   return new Blob([new XMLSerializer().serializeToString(doc)], {
     type: "image/svg+xml;charset=utf-8",
   });
 }
-export async function pngBlob(project: Project) {
-  if (project.family === "document")
-    throw new Error("Use PDF export for multi-page documents.");
-  if (project.family === "presentation")
-    throw new Error("Use PDF or PPTX export for presentations.");
-  const blob = await svgBlob(project);
-  const url = URL.createObjectURL(blob);
-  try {
-    const img = new Image();
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error("Image export failed."));
-      img.src = url;
-    });
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(canvasWidth(project) * 1.5);
-    canvas.height = Math.round(canvasHeight(project) * 1.5);
-    canvas.getContext("2d")!.drawImage(img, 0, 0);
-    return await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob(
-        (blob) =>
-          blob ? resolve(blob) : reject(new Error("Image export failed.")),
-        "image/png",
-      ),
-    );
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+export async function pngBlob(
+  project: Project,
+  options?: { hidePageFill?: boolean },
+) {
+  const doc = await prepareGraphicSvg(project, {
+    hidePageFill: options?.hidePageFill ?? true,
+  });
+  return rasterizeSvgMarkup(
+    new XMLSerializer().serializeToString(doc),
+    canvasWidth(project),
+    canvasHeight(project),
+  );
+}
+export async function jpgBlob(project: Project) {
+  const doc = await prepareGraphicSvg(project);
+  return rasterizeSvgMarkup(
+    new XMLSerializer().serializeToString(doc),
+    canvasWidth(project),
+    canvasHeight(project),
+    EXPORT_RASTER_SCALE,
+    {
+      mimeType: "image/jpeg",
+      quality: 0.92,
+      background: project.backgroundColor || "#ffffff",
+    },
+  );
 }
 export async function exportProject(project: Project, format: string) {
   const name =
@@ -256,6 +273,8 @@ export async function exportProject(project: Project, format: string) {
     if (
       format === "svg" ||
       format === "png" ||
+      format === "jpg" ||
+      format === "jpeg" ||
       format === "zip" ||
       format === "pptx"
     )
@@ -273,7 +292,13 @@ export async function exportProject(project: Project, format: string) {
       downloadFile(await buildPptxBlob(project), `${name}.pptx`);
       return;
     }
-    if (format === "svg" || format === "png" || format === "zip")
+    if (
+      format === "svg" ||
+      format === "png" ||
+      format === "jpg" ||
+      format === "jpeg" ||
+      format === "zip"
+    )
       throw new Error(
         "Presentations export as PDF, editable PPTX, or Forma JSON.",
       );
@@ -288,7 +313,11 @@ export async function exportProject(project: Project, format: string) {
     downloadFile(await pngBlob(project), `${name}.png`);
     return;
   }
-  if (format === "pdf") {
+  if (format === "jpg" || format === "jpeg") {
+    downloadFile(await jpgBlob(project), `${name}.jpg`);
+    return;
+  }
+  if (format === "pdf-image") {
     const { jsPDF } = await import("jspdf");
     const width = canvasWidth(project);
     const height = canvasHeight(project);
@@ -299,7 +328,9 @@ export async function exportProject(project: Project, format: string) {
       compress: true,
     });
     pdf.addImage(
-      new Uint8Array(await (await pngBlob(project)).arrayBuffer()),
+      new Uint8Array(
+        await (await pngBlob(project, { hidePageFill: false })).arrayBuffer(),
+      ),
       "PNG",
       0,
       0,
@@ -318,7 +349,7 @@ export async function exportProject(project: Project, format: string) {
     const zip = new JSZip();
     if (project.format === "custom") {
       validateExport(project);
-      zip.file("design.png", await pngBlob(project));
+      zip.file("design.png", await pngBlob(project, { hidePageFill: false }));
       zip.file(
         "page-size.txt",
         `${canvasWidth(project)} × ${canvasHeight(project)} design units\n`,
@@ -327,7 +358,10 @@ export async function exportProject(project: Project, format: string) {
       for (const format of ["portrait", "square", "story"] as const) {
         const variant = { ...project, format, pageSize: undefined };
         validateExport(variant);
-        zip.file(`${format}.png`, await pngBlob(variant));
+        zip.file(
+          `${format}.png`,
+          await pngBlob(variant, { hidePageFill: false }),
+        );
       }
     }
     zip.file("approved-copy.txt", project.manuscript);

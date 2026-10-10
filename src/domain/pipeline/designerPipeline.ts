@@ -337,6 +337,14 @@ export async function runAiDesignerPipeline(
     quality.report.finalScore,
     projection.fidelity,
   );
+  project.metadata = {
+    ...(project.metadata || {}),
+    designSpec: finalSpec,
+    copyCheckStatus: finalCopyVal.valid ? "pass" : "fail",
+    fitStatus: finalFitEval.valid ? "pass" : "unresolved",
+    qualityStatus: deliverableQuality.status,
+    generatorVersion: "forma-pipeline-v2b",
+  };
 
   const success =
     errors.length === 0 &&

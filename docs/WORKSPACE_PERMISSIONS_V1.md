@@ -28,6 +28,7 @@ This document details the deterministic role hierarchy, permission rules, and se
 | **Use Approved Templates in /create** | Yes | Yes | Yes | No |
 | **Create Client Projects** | Yes | Yes | Yes | No |
 | **View Client Projects** | Yes | Yes | Yes | Yes |
+| **Export project PDF** | Yes | Yes | Yes | No |
 | **Share Workspace Templates** | Yes | Yes | No | No |
 
 ---
@@ -47,4 +48,5 @@ export function canUseWorkspaceTemplate(user: WorkspaceActor | null | undefined,
 export function canCreateClientProject(user: WorkspaceActor | null | undefined, client: ClientRecord, workspace?: WorkspaceRecord): boolean;
 export function canViewClientProject(user: WorkspaceActor | null | undefined, project: Project, workspace?: WorkspaceRecord): boolean;
 export function canShareWorkspaceTemplate(user: WorkspaceActor | null | undefined, template: TemplateFamilyRecord, workspace?: WorkspaceRecord): boolean;
+export function canExportProject(user: WorkspaceActor | null | undefined, project: Project, workspace?: WorkspaceRecord | null, client?: ClientRecord | null): ExportPermissionResult;
 ```

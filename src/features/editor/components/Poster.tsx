@@ -220,6 +220,7 @@ type Props = {
   onFieldBox?: (id: FieldId, box: DesignBox) => void;
   miniature?: boolean;
   original?: boolean;
+  hidePageFill?: boolean;
   exportId?: string;
   drawing?: FieldId | null;
   onRegion?: (
@@ -241,6 +242,7 @@ export default function Poster({
   onMove,
   onFieldBox,
   miniature,
+  hidePageFill,
   exportId,
   drawing,
   onRegion,
@@ -339,11 +341,13 @@ export default function Poster({
           : undefined
       }
     >
-      <rect
-        width={width}
-        height={height}
-        fill={project.backgroundColor || theme.color}
-      />
+      {!hidePageFill && (
+        <rect
+          width={width}
+          height={height}
+          fill={project.backgroundColor || theme.color}
+        />
+      )}
       {isReference ? (
         <image
           href={project.reference!}

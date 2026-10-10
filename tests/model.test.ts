@@ -176,7 +176,7 @@ test("supports banner and custom page sizes while keeping legacy presets", () =>
   };
   assert.equal(isProject(custom), true);
   assert.deepEqual(resolvePageSize(custom), { width: 1000, height: 500 });
-  assert.deepEqual(outputPixels(custom), { width: 1500, height: 750 });
+  assert.deepEqual(outputPixels(custom), { width: 3000, height: 1500 });
   assert.equal(
     isProject({ ...p, format: "custom", pageSize: { width: 10, height: 10 } }),
     false,

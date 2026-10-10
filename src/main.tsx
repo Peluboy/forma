@@ -52,6 +52,7 @@ const PublicTemplatePage = lazy(
 const WorkspacePage = lazy(() => import("./features/workspaces/WorkspacePage"));
 const UiPlaygroundPage = lazy(() => import("./features/dev/UiPlaygroundPage"));
 const UiDirectionPage = lazy(() => import("./features/dev/UiDirectionPage"));
+const ExportDevPanel = lazy(() => import("./features/dev/ExportDevPanel"));
 const path = location.pathname.replace(/\/$/, "") || "/";
 const query = new URLSearchParams(location.search);
 // Preserve payment and password-reset links issued by the previous release.
@@ -75,6 +76,8 @@ const screen = path.startsWith("/review/") ? (
   <ReferenceDevPanel />
 ) : path === "/dev/templates" ? (
   <TemplateAuthoringPanel />
+) : path === "/dev/export" ? (
+  <ExportDevPanel />
 ) : path === "/dev/pipeline" || path === "/dev" ? (
   <PipelineDevPanel />
 ) : path === "/create" ? (

@@ -227,6 +227,20 @@ export default function EditorPage() {
   );
   const [exportFormat, setExportFormat] = useState("png");
   const [exporting, setExporting] = useState(false);
+  useEffect(() => {
+    setExportFormat((format) => {
+      if (format === "pdf-native") return "pdf";
+      if (project.family === "document")
+        return ["pdf", "json"].includes(format) ? format : "pdf";
+      if (project.family === "presentation")
+        return ["pdf", "pptx", "json"].includes(format) ? format : "pdf";
+      return ["png", "jpg", "jpeg", "svg", "pdf", "zip", "json"].includes(
+        format,
+      )
+        ? format
+        : "png";
+    });
+  }, [project.family]);
   const [fileMenu, setFileMenu] = useState(false);
   const manuscriptInput = useRef<HTMLInputElement>(null);
   const referenceInput = useRef<HTMLInputElement>(null);
@@ -462,6 +476,7 @@ export default function EditorPage() {
       project,
       provider,
       signedIn: !!session.user,
+      user: session.user,
       exportFormat,
       update,
       setDraft,

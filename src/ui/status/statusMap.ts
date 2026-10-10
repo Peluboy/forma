@@ -103,6 +103,39 @@ export function mapReferenceConfidence(
   }
 }
 
+export function mapExportPreflight(status: string): StatusMeta {
+  switch (status) {
+    case "pass":
+      return { label: "Ready to export", variant: "success" };
+    case "pass_with_warnings":
+      return {
+        label: "Ready with notes",
+        variant: "warning",
+        description: "The file will download. Some fonts or images may change.",
+      };
+    case "blocked":
+      return { label: "Export blocked", variant: "danger" };
+    default:
+      return { label: "Export needs review", variant: "warning" };
+  }
+}
+
+export function mapExportFidelity(status: string): StatusMeta {
+  switch (status) {
+    case "export_trusted":
+      return { label: "Ready to export", variant: "success" };
+    case "export_with_approximations":
+      return {
+        label: "Some fonts will be replaced",
+        variant: "warning",
+      };
+    case "export_blocked":
+      return { label: "Export blocked", variant: "danger" };
+    default:
+      return { label: "Export needs review", variant: "warning" };
+  }
+}
+
 export function mapWorkspaceRole(role: string): StatusMeta {
   switch (role) {
     case "owner":

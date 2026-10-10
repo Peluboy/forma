@@ -141,8 +141,8 @@ test("shapes and images stack with text, persist, reopen and export", async ({
     .click();
   const pngExport = await readFile((await (await downloading).path())!);
   const metadata = await sharp(pngExport).metadata();
-  expect(metadata.width).toBe(1080);
-  expect(metadata.height).toBe(1350);
+  expect(metadata.width).toBe(2160);
+  expect(metadata.height).toBe(2700);
   await page.reload();
   await page
     .getByRole("button", { name: "Select my-logo.png", exact: true })

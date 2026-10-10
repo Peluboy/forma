@@ -102,6 +102,7 @@ export function EditorModalHost({
           issueTargets={exportState.issueTargets}
           issueCount={exportState.issueCount}
           exporting={exportState.exporting}
+          user={user}
           onFocusIssue={onFocusIssue}
           onExport={onExport}
           onClose={onClose}

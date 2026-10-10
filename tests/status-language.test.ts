@@ -7,6 +7,8 @@ import {
   mapTemplateStatus,
   mapReferenceConfidence,
   mapWorkspaceRole,
+  mapExportPreflight,
+  mapExportFidelity,
 } from "../src/ui/status/statusMap.js";
 
 describe("Phase 7.5: Status Language System & UI Copy", () => {
@@ -70,5 +72,15 @@ describe("Phase 7.5: Status Language System & UI Copy", () => {
     assert.equal(mapWorkspaceRole("admin").label, "Admin");
     assert.equal(mapWorkspaceRole("designer").label, "Designer");
     assert.equal(mapWorkspaceRole("viewer").label, "View only");
+  });
+
+  it("maps export preflight and fidelity to plain English", () => {
+    assert.equal(mapExportPreflight("pass").label, "Ready to export");
+    assert.equal(mapExportPreflight("blocked").label, "Export blocked");
+    assert.equal(mapExportFidelity("export_trusted").label, "Ready to export");
+    assert.equal(
+      mapExportFidelity("export_with_approximations").label,
+      "Some fonts will be replaced",
+    );
   });
 });

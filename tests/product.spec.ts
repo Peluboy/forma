@@ -183,9 +183,9 @@ test("PDF input, PDF export, campaign ZIP, and reusable template flows work", as
   );
   expect(editable.compatibility.project.manuscript).toBe(approvedCopy);
   for (const [format, width, height] of [
-    ["portrait", 1080, 1350],
-    ["square", 1080, 1080],
-    ["story", 1080, 1920],
+    ["portrait", 2160, 2700],
+    ["square", 2160, 2160],
+    ["story", 2160, 3840],
   ] as const) {
     const metadata = await sharp(
       await zip.file(`${format}.png`)!.async("nodebuffer"),

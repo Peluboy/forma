@@ -4,6 +4,7 @@ import { Modal } from "./Modal";
 import { Button } from "./Button";
 import type { FormatId, Project } from "../../../domain/design/model";
 import {
+  EXPORT_RASTER_SCALE,
   canvasHeight,
   canvasWidth,
   formatPresets,
@@ -44,7 +45,7 @@ export function ResizeDialog({ project, onClose, onApply }: ResizeDialogProps) {
       format,
       size: formatPresets[format],
       label: FORMAT_LABELS[format],
-      pixels: `${Math.round(formatPresets[format].width * 1.5)} × ${Math.round(formatPresets[format].height * 1.5)}`,
+      pixels: `${Math.round(formatPresets[format].width * EXPORT_RASTER_SCALE)} × ${Math.round(formatPresets[format].height * EXPORT_RASTER_SCALE)}`,
     }),
   );
   const customValid =
@@ -78,7 +79,7 @@ export function ResizeDialog({ project, onClose, onApply }: ResizeDialogProps) {
         <strong>Custom size</strong>
         <p className="quiet-note">
           Design units between {PAGE_SIZE_MIN} and {PAGE_SIZE_MAX}. Export
-          pixels are 1.5× these values.
+          pixels are {EXPORT_RASTER_SCALE}× these values.
         </p>
         <div className="custom-size-inputs">
           <label>
