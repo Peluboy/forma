@@ -265,7 +265,7 @@ export async function exportProject(project: Project, format: string) {
     return;
   }
   if (project.family === "document") {
-    if (format === "pdf") {
+    if (format === "pdf" || format === "pdf-image") {
       const pdf = await documentPdf(project);
       pdf.save(`${name}.pdf`);
       return;

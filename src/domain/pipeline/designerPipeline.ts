@@ -344,6 +344,17 @@ export async function runAiDesignerPipeline(
     fitStatus: finalFitEval.valid ? "pass" : "unresolved",
     qualityStatus: deliverableQuality.status,
     generatorVersion: "forma-pipeline-v2b",
+    designSpecSync: {
+      version: "1.0",
+      designSpecId: finalSpec.id,
+      projectId: project.id,
+      status: "in_sync",
+      lastSyncedAt: new Date().toISOString(),
+      supportedEditCount: 0,
+      unsupportedEditCount: 0,
+      warnings: [],
+      blockers: [],
+    },
   };
 
   const success =

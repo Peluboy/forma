@@ -7,6 +7,7 @@ export {
   mapWorkspaceRole,
   mapExportPreflight,
   mapExportFidelity,
+  mapDesignSyncStatus,
   type StatusMeta,
 } from "./statusMap";
 export { StatusBadge, type StatusBadgeProps } from "./StatusBadge";

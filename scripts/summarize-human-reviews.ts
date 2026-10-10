@@ -65,13 +65,16 @@ async function main() {
         .filter(
           (record: { caseId?: unknown; id?: unknown; finalScore?: unknown }) =>
             record &&
-            (typeof record.caseId === "string" || typeof record.id === "string") &&
+            (typeof record.caseId === "string" ||
+              typeof record.id === "string") &&
             typeof record.finalScore === "number",
         )
-        .map((record: { caseId?: string; id?: string; finalScore: number }) => ({
-          caseId: record.caseId ?? record.id!,
-          heuristicScore: record.finalScore,
-        }));
+        .map(
+          (record: { caseId?: string; id?: string; finalScore: number }) => ({
+            caseId: record.caseId ?? record.id!,
+            heuristicScore: record.finalScore,
+          }),
+        );
   }
 
   const summary = summarizeHumanReviews(reviews, scores);

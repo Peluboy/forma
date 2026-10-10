@@ -53,6 +53,7 @@ const WorkspacePage = lazy(() => import("./features/workspaces/WorkspacePage"));
 const UiPlaygroundPage = lazy(() => import("./features/dev/UiPlaygroundPage"));
 const UiDirectionPage = lazy(() => import("./features/dev/UiDirectionPage"));
 const ExportDevPanel = lazy(() => import("./features/dev/ExportDevPanel"));
+const SyncDevPanel = lazy(() => import("./features/dev/SyncDevPanel"));
 const path = location.pathname.replace(/\/$/, "") || "/";
 const query = new URLSearchParams(location.search);
 // Preserve payment and password-reset links issued by the previous release.
@@ -78,6 +79,8 @@ const screen = path.startsWith("/review/") ? (
   <TemplateAuthoringPanel />
 ) : path === "/dev/export" ? (
   <ExportDevPanel />
+) : path === "/dev/sync" ? (
+  <SyncDevPanel />
 ) : path === "/dev/pipeline" || path === "/dev" ? (
   <PipelineDevPanel />
 ) : path === "/create" ? (

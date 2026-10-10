@@ -175,3 +175,5 @@ The Editor Quality Panel and Dev Lab display these verdicts prominently.
 ## 7. Native PDF export (Phase 8)
 
 `checkEditorExportConsistency` remains a **FlowDocument** structural check. Native PDF export compares DesignSpec to written PDF bytes in `ExportFidelityReport` (`src/domain/export/`). The existing raster editor PDF is still available as an explicit flattened fallback and is not used silently by the native path.
+
+Phase 9 keeps the stored DesignSpec current after supported editor edits (`src/domain/design-spec/sync/`). Native PDF is blocked when sync is stale or an unsupported edit is detected. See [DesignSpec live-edit sync](DESIGNSPEC_LIVE_EDIT_SYNC_PHASE_9.md).

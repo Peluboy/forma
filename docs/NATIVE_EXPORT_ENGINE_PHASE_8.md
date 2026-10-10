@@ -97,7 +97,8 @@ All visual PDFs and PNG/SVG exports depend on React canvas views (`Poster`, `Doc
 - Legacy projects without a stored DesignSpec are adapted and may carry adapter warnings
 - Raster fallback, if ever used, must be explicit in the fidelity report
 - Viewers cannot export workspace/client projects
-- Existing editor PDFs remain flattened; users must choose **PDF, native beta** for selectable text
+- Existing editor PDFs remain flattened; users must choose **PDF — selectable text** for selectable text
+- Phase 9: native PDF must not silently use a stale stored DesignSpec after canvas edits. See [live-edit sync](DESIGNSPEC_LIVE_EDIT_SYNC_PHASE_9.md).
 
 ---
 

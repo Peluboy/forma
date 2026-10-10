@@ -9,6 +9,7 @@ import {
   mapWorkspaceRole,
   mapExportPreflight,
   mapExportFidelity,
+  mapDesignSyncStatus,
 } from "../src/ui/status/statusMap.js";
 
 describe("Phase 7.5: Status Language System & UI Copy", () => {
@@ -72,6 +73,16 @@ describe("Phase 7.5: Status Language System & UI Copy", () => {
     assert.equal(mapWorkspaceRole("admin").label, "Admin");
     assert.equal(mapWorkspaceRole("designer").label, "Designer");
     assert.equal(mapWorkspaceRole("viewer").label, "View only");
+  });
+
+  it("maps design sync status to plain English", () => {
+    assert.equal(mapDesignSyncStatus("in_sync").label, "Up to date");
+    assert.equal(mapDesignSyncStatus("stale").label, "Needs sync");
+    assert.equal(
+      mapDesignSyncStatus("unsupported_edit_detected").label,
+      "Export may not match",
+    );
+    assert.equal(mapDesignSyncStatus("resync_failed").label, "Sync failed");
   });
 
   it("maps export preflight and fidelity to plain English", () => {

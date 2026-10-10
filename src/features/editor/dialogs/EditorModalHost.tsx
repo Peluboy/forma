@@ -12,6 +12,7 @@ import Account from "../../account/Account";
 import Billing from "../../billing/Billing";
 import AnalysisReview, { type Analysis } from "./AnalysisReview";
 import { BrandSettings, ShareReview, VersionHistory } from "./WorkspaceDialogs";
+import { resyncLinkedDesignSpec } from "../../../domain/design-spec/sync";
 import EditorExportDialog from "./EditorExportDialog";
 
 export type EditorDialog =
@@ -58,6 +59,7 @@ export function EditorModalHost({
   onExportFormat,
   onFocusIssue,
   onExport,
+  onUpdateProject,
   onResize,
   onApplyContent,
   onApplyAnalysis,
@@ -82,6 +84,7 @@ export function EditorModalHost({
   onExportFormat: (format: string) => void;
   onFocusIssue: (issue: IssueTarget) => void;
   onExport: () => void;
+  onUpdateProject: (patch: Partial<Project>) => void;
   onResize: (patch: Partial<Project>) => void;
   onApplyContent: () => void;
   onApplyAnalysis: (patch: Partial<Project>) => void;
@@ -105,6 +108,18 @@ export function EditorModalHost({
           user={user}
           onFocusIssue={onFocusIssue}
           onExport={onExport}
+          onResync={() => {
+            const result = resyncLinkedDesignSpec(project);
+            onUpdateProject({
+              metadata: result.project.metadata,
+              flow: result.project.flow,
+            });
+            onMessage(
+              result.applied
+                ? "Latest edits are synced."
+                : "Could not sync those edits. Flattened PDF is still available.",
+            );
+          }}
           onClose={onClose}
         />
       )}

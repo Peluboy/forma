@@ -1,5 +1,15 @@
 # Delivery progress
 
+## October 9, 2026: Phase 9 — DesignSpec Live-Edit Sync v1
+
+- **Audit**: `docs/DESIGNSPEC_LIVE_EDIT_SYNC_PHASE_9.md` records where DesignSpec is stored, how FlowDocument is edited, and how native PDF could drift.
+- **Sync module** `src/domain/design-spec/sync/`: operation model, projection links, patch apply, stale detection, ID-preserving rebuild, save metadata.
+- **Editor**: `update()` patches the linked DesignSpec. Source text edits warn “Copy changed after generation.”
+- **Export**: Native PDF reads the stored spec only when sync allows it. Stale or unsupported edits block selectable PDF. Flattened PDF remains.
+- **UI / lab**: Export dialog shows sync status and Sync latest edits. Quality/trust includes `design_current` / `design_out_of_sync`. Dev lab at `/dev/sync`.
+- **Benchmark**: `npm run benchmark:designspec-sync`.
+- **Deferred**: PPTX from DesignSpec, automatic migration of all old projects, presentation/graphic live sync.
+
 ## October 9, 2026: Phase 8 — Native Export Engine v1
 
 - **Audit-first**: `docs/NATIVE_EXPORT_ENGINE_PHASE_8.md` records current raster PDF/SVG/PNG/PPTX paths, what is selectable vs flattened, and what Phase 8 replaces.

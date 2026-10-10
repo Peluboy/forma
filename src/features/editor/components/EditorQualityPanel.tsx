@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Layers, RotateCcw, Sparkles, X } from "lucide-react";
 import type { Project } from "../../../domain/design/model.js";
 import { fromFlowDocument } from "../../../domain/design-spec/adapters/fromFlowDocument.js";
+import { getStoredDesignSpec } from "../../../domain/design-spec/sync";
 import { evaluateDocumentQuality } from "../../../domain/design-quality/documentQuality.js";
 import { measureTextElement } from "../../../domain/layout-fit/measure.js";
 import { evaluateDocumentFit } from "../../../domain/layout-fit/engine.js";
@@ -41,7 +42,7 @@ export function EditorQualityPanel({ project, onApply }: Props) {
 
   const report = useMemo(() => {
     if (project.family !== "document" || !project.flow) return null;
-    const { spec } = fromFlowDocument(project);
+    const spec = getStoredDesignSpec(project) || fromFlowDocument(project).spec;
     const quality = evaluateDocumentQuality(spec, FORMA_EDITORIAL_REPORT);
     const { fidelity } = projectDesignSpecToFlowDocument(
       spec,
@@ -55,7 +56,17 @@ export function EditorQualityPanel({ project, onApply }: Props) {
       ).valid,
       fitValid: evaluateDocumentFit(spec, FORMA_EDITORIAL_REPORT).valid,
       fidelity,
-      deliverable: assessDeliverableQuality(quality.overallScore, fidelity),
+      deliverable: assessDeliverableQuality(
+        quality.overallScore,
+        fidelity,
+        typeof project.metadata?.designSpecSync === "object" &&
+          project.metadata?.designSpecSync &&
+          "status" in project.metadata.designSpecSync
+          ? String(
+              (project.metadata.designSpecSync as { status?: string }).status,
+            )
+          : undefined,
+      ),
       spec,
     };
   }, [project]);
@@ -102,12 +113,14 @@ export function EditorQualityPanel({ project, onApply }: Props) {
       );
       return;
     }
-    const parts = elementId.split(":");
-    const pageId = parts[1];
-    const frameId = parts.slice(2).join(":");
     const next = structuredClone(project);
-    const page = next.flow?.pages.find((item) => item.id === pageId);
-    const frame = page?.elements.find((item) => item.id === frameId);
+    const frame = next.flow?.pages
+      .flatMap((page) => page.elements.map((element) => ({ page, element })))
+      .find(
+        ({ element }) =>
+          element.id === elementId ||
+          element.designLink?.designSpecElementId === elementId,
+      )?.element;
     if (!frame || frame.type !== "text") return;
     setPreviousProject(structuredClone(project));
     frame.fontSize = candidate.fontSize;
@@ -130,12 +143,14 @@ export function EditorQualityPanel({ project, onApply }: Props) {
       setFixMessage("Heading cannot be enlarged without overflowing frame.");
       return;
     }
-    const parts = elementId.split(":");
-    const pageId = parts[1];
-    const frameId = parts.slice(2).join(":");
     const next = structuredClone(project);
-    const page = next.flow?.pages.find((item) => item.id === pageId);
-    const frame = page?.elements.find((item) => item.id === frameId);
+    const frame = next.flow?.pages
+      .flatMap((page) => page.elements.map((element) => ({ page, element })))
+      .find(
+        ({ element }) =>
+          element.id === elementId ||
+          element.designLink?.designSpecElementId === elementId,
+      )?.element;
     if (!frame || frame.type !== "text") return;
     setPreviousProject(structuredClone(project));
     frame.fontSize = candidate.fontSize;
@@ -174,7 +189,14 @@ export function EditorQualityPanel({ project, onApply }: Props) {
         project.manuscript,
       );
       setPreviousProject(structuredClone(project));
-      onApply({ ...project, flow: projected.flow });
+      onApply({
+        ...project,
+        flow: projected.flow,
+        metadata: {
+          ...(project.metadata || {}),
+          designSpec: outcome.spec,
+        },
+      });
       setFixMessage("Switched to compatible layout. Copy remains exact.");
     } else {
       setFixMessage(outcome.reason || "Could not switch layout variant.");

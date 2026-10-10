@@ -453,10 +453,8 @@ const report = {
     oldPersonalCompatibilityPassed:
       checks.find((c) => c.id === "case-12-legacy-personal-generation")
         ?.passed ?? false,
-    clientGenerationQualityScore:
-      clientGenResult.quality.final.overallScore,
-    legacyGenerationQualityScore:
-      legacyGenResult.quality.final.overallScore,
+    clientGenerationQualityScore: clientGenResult.quality.final.overallScore,
+    legacyGenerationQualityScore: legacyGenResult.quality.final.overallScore,
     note: "Phase 7 Agency Workspace v1 benchmark verifies workspace & client scoping, permission gates, template hierarchy, and legacy backward-compatibility.",
   },
   checks,

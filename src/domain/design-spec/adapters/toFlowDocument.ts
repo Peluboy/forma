@@ -31,6 +31,7 @@ import {
   type FidelityWarning,
   type ProjectionOutcome,
 } from "../fidelity/index.js";
+import { makeDesignLink } from "../sync/links.js";
 
 /**
  * Fonts the document editor and exporter can render reliably. DesignSpec fonts
@@ -938,9 +939,11 @@ export function projectPage(
     items.push(...projection.outcome.fidelityItems);
     warnings.push(...projection.outcome.warnings);
     blockers.push(...projection.outcome.blockers);
-    if (projection.kind === "flow") elements.push(projection.element);
+    const link = makeDesignLink(ctx.spec.id, page.id, el.id, el.sourceSpanIds);
+    if (projection.kind === "flow")
+      elements.push({ ...projection.element, designLink: link });
     else if (projection.kind === "decoration")
-      decorations.push(projection.element);
+      decorations.push({ ...projection.element, designLink: link });
   }
 
   const flowPage: FlowPage = {
@@ -949,6 +952,7 @@ export function projectPage(
     decorations: decorations.length ? decorations : undefined,
     background: page.background?.color,
     role: page.role ? (PAGE_ROLE_MAP[page.role] ?? "other") : undefined,
+    designLink: makeDesignLink(ctx.spec.id, page.id),
     designMetadata: {
       ...(page.metadata || {}),
       designSpecName: page.name,

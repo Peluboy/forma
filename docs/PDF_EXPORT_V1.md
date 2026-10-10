@@ -51,3 +51,4 @@ Alternatives considered and rejected for v1:
 - Missing **decorative** images warn; a labelled placeholder is drawn so the slot is not omitted
 - Unsupported effects warn. They rasterize only when `rasterizeUnsupportedEffects` is true; that rasterization is recorded and the fidelity status cannot be `export_trusted`
 - Legacy editor PDF remains available as an explicit flattened path. Native export does **not** silently fall back to it
+- After editor edits, native PDF requires DesignSpec sync (`in_sync` or `sync_with_approximations`). Stale or unsupported edits block selectable PDF.

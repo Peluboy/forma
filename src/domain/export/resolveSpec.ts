@@ -24,6 +24,13 @@ export function resolveDesignSpecFromProject(project: Project): {
   warnings: string[];
   source: "metadata" | "flow" | "graphic" | "presentation";
 } {
+  if (isDesignSpec(project.metadata?.designSpec)) {
+    return {
+      spec: project.metadata.designSpec,
+      warnings: [],
+      source: "metadata",
+    };
+  }
   if (project.family === "document" && project.flow) {
     const adapted = fromFlowDocument(project);
     return { spec: adapted.spec, warnings: adapted.warnings, source: "flow" };
@@ -37,13 +44,6 @@ export function resolveDesignSpecFromProject(project: Project): {
       spec: adapted.spec,
       warnings: adapted.warnings,
       source: "graphic",
-    };
-  }
-  if (isDesignSpec(project.metadata?.designSpec)) {
-    return {
-      spec: project.metadata.designSpec,
-      warnings: [],
-      source: "metadata",
     };
   }
   const adapted = fromLegacyGraphicProject(project);

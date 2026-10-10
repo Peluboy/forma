@@ -16,6 +16,11 @@ import { mapFontForPdf } from "./fontMapping.js";
 import { prepareTable } from "./tableExport.js";
 import { prepareChart } from "./chartExport.js";
 import { selectPages } from "./options.js";
+import {
+  getStoredDesignSpec,
+  inspectProjectSync,
+  nativeExportAllowed,
+} from "../design-spec/sync/index.js";
 import type {
   ExportBlocker,
   ExportPreflightReport,
@@ -76,6 +81,36 @@ export function runExportPreflight(
       code: "archived_context",
       message: "This client or project is archived. Export is still allowed.",
     });
+  }
+
+  if (input.project?.family === "document") {
+    const sync = inspectProjectSync(input.project);
+    const gate = nativeExportAllowed(sync);
+    if (gate === "unavailable" || !getStoredDesignSpec(input.project)) {
+      addBlocker({
+        code: "designspec_missing",
+        message: "Selectable PDF is unavailable for this project.",
+      });
+    } else if (gate === "block") {
+      addBlocker({
+        code:
+          sync.status === "unsupported_edit_detected"
+            ? "designspec_unsupported_edit"
+            : "designspec_stale",
+        message: "Selectable PDF may not match your latest edits.",
+      });
+    } else if (gate === "warn") {
+      addWarning({
+        code: "designspec_approximated",
+        message: "Selectable PDF has minor limits.",
+      });
+    }
+    if (sync.copyChanged) {
+      addWarning({
+        code: "copy_changed_after_edit",
+        message: "Copy changed after generation.",
+      });
+    }
   }
 
   const validation = validateDesignSpec(spec);

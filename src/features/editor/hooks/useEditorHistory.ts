@@ -1,5 +1,6 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 import type { Project } from "../../../domain/design/model";
+import { syncProjectAfterEdit } from "../../../domain/design-spec/sync";
 
 /** Local undo history for edits to one open project. Persistence remains separate. */
 export function useEditorHistory({
@@ -25,7 +26,12 @@ export function useEditorHistory({
     if (patch.family && patch.family !== project.family) onFamilyChange();
     setHistory((previous) => [...previous.slice(-39), project]);
     setFuture([]);
-    setProject({ ...project, ...patch, updatedAt: new Date().toISOString() });
+    const merged = {
+      ...project,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    };
+    setProject(syncProjectAfterEdit(project, merged));
   }
 
   function undo() {

@@ -13,6 +13,13 @@ export function describePreflightForUser(
       (item) => item.code === "export_unauthorized",
     );
     if (auth) return [auth.message, "Export blocked"];
+    const sync = preflight.blockers.find(
+      (item) =>
+        item.code === "designspec_stale" ||
+        item.code === "designspec_unsupported_edit" ||
+        item.code === "designspec_missing",
+    );
+    if (sync) return [sync.message, "Export blocked"];
     return [
       preflight.blockers[0]?.message || "Export blocked",
       "Export blocked",
@@ -32,6 +39,14 @@ export function describePreflightForUser(
   if (soft.length > 1) messages.push("Some images may look soft");
   if (preflight.warnings.some((item) => item.code === "unresolved_fit"))
     messages.push("Some text is tight on the page");
+  if (
+    preflight.warnings.some((item) => item.code === "designspec_approximated")
+  )
+    messages.push("Selectable PDF has minor limits.");
+  if (
+    preflight.warnings.some((item) => item.code === "copy_changed_after_edit")
+  )
+    messages.push("Copy changed after generation.");
   for (const warning of preflight.warnings) {
     if (
       warning.code === "font_substitution" ||

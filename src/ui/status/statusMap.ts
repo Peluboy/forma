@@ -120,6 +120,33 @@ export function mapExportPreflight(status: string): StatusMeta {
   }
 }
 
+export function mapDesignSyncStatus(status: string): StatusMeta {
+  switch (status) {
+    case "in_sync":
+    case "design_current":
+    case "native_export_current":
+      return { label: "Up to date", variant: "success" };
+    case "sync_with_approximations":
+      return { label: "Needs review", variant: "warning" };
+    case "stale":
+    case "design_out_of_sync":
+    case "native_export_stale":
+      return {
+        label: "Needs sync",
+        variant: "warning",
+        description: "Selectable PDF may not match recent edits.",
+      };
+    case "unsupported_edit_detected":
+      return { label: "Export may not match", variant: "danger" };
+    case "missing_design_spec":
+      return { label: "Selectable PDF unavailable", variant: "neutral" };
+    case "resync_failed":
+      return { label: "Sync failed", variant: "danger" };
+    default:
+      return { label: "Needs review", variant: "warning" };
+  }
+}
+
 export function mapExportFidelity(status: string): StatusMeta {
   switch (status) {
     case "export_trusted":

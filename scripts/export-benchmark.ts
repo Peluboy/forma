@@ -476,9 +476,13 @@ function baseSpec(partial: Partial<DesignSpec> = {}): DesignSpec {
   });
   const job = await runNativePdfExport({ spec });
   record({
-    id: "case-9-fit-blocks",
-    name: "unresolved fit blocks export",
-    passed: job.status === "blocked",
+    id: "case-9-fit-warns",
+    name: "unresolved fit warns and export still completes",
+    passed:
+      job.status === "completed" &&
+      Boolean(
+        job.preflight?.warnings.some((item) => item.code === "unresolved_fit"),
+      ),
     detail: `status=${job.status}`,
     status: job.status,
     preflight: job.preflight?.status,

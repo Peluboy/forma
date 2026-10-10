@@ -4,7 +4,11 @@ export type DeliverableQualityStatus =
   | "quality_trusted"
   | "quality_approximated"
   | "editor_projection_loss_detected"
-  | "quality_unverified_after_projection";
+  | "quality_unverified_after_projection"
+  | "design_current"
+  | "design_out_of_sync"
+  | "native_export_current"
+  | "native_export_stale";
 
 export interface DeliverableQualityAssessment {
   designSpecScore: number;
@@ -28,6 +32,7 @@ const MIN_TRUSTWORTHY_SCORE = 60;
 export function assessDeliverableQuality(
   designSpecScore: number,
   fidelity: EditorProjectionFidelityReport,
+  syncStatus?: string,
 ): DeliverableQualityAssessment {
   const reasons: string[] = [];
   const blockers = fidelity.blockers.map((blocker) => blocker.message);
@@ -61,8 +66,22 @@ export function assessDeliverableQuality(
     reasons.push("DesignSpec and editor projection agree within tolerance.");
   }
 
+  if (
+    syncStatus === "stale" ||
+    syncStatus === "unsupported_edit_detected" ||
+    syncStatus === "design_out_of_sync" ||
+    syncStatus === "native_export_stale"
+  ) {
+    status = "design_out_of_sync";
+    reasons.push("Latest edits are not yet in the native design file.");
+  } else if (syncStatus === "in_sync" || syncStatus === "design_current") {
+    if (status === "quality_trusted") status = "design_current";
+  }
+
   const trusted =
-    (status === "quality_trusted" || status === "quality_approximated") &&
+    (status === "quality_trusted" ||
+      status === "quality_approximated" ||
+      status === "design_current") &&
     !lostCopy &&
     fidelity.overall !== "unsafe";
 

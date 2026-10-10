@@ -28,7 +28,11 @@ const reviewPackageDirectory = resolve(
 // Target specific case if --case <id> or --case=<id> is passed
 let targetCaseId: string | null = null;
 const caseIndex = args.indexOf("--case");
-if (caseIndex !== -1 && args[caseIndex + 1] && !args[caseIndex + 1].startsWith("--")) {
+if (
+  caseIndex !== -1 &&
+  args[caseIndex + 1] &&
+  !args[caseIndex + 1].startsWith("--")
+) {
   targetCaseId = args[caseIndex + 1];
 } else {
   const caseArg = args.find((a) => a.startsWith("--case="));
@@ -36,14 +40,17 @@ if (caseIndex !== -1 && args[caseIndex + 1] && !args[caseIndex + 1].startsWith("
 }
 
 if (outputDirectory) await mkdir(outputDirectory, { recursive: true });
-if (writeReviewPackages) await mkdir(reviewPackageDirectory, { recursive: true });
+if (writeReviewPackages)
+  await mkdir(reviewPackageDirectory, { recursive: true });
 
 const fixturesToRun = targetCaseId
   ? QUALITY_CASES.filter((fixture) => fixture.id === targetCaseId)
   : QUALITY_CASES;
 
 if (targetCaseId && fixturesToRun.length === 0) {
-  process.stderr.write(`Warning: Case "${targetCaseId}" not found in QUALITY_CASES.\n`);
+  process.stderr.write(
+    `Warning: Case "${targetCaseId}" not found in QUALITY_CASES.\n`,
+  );
 }
 
 const records = [];
@@ -164,7 +171,10 @@ for (const fixture of fixturesToRun) {
 
     // Attempt to load existing human review if available
     try {
-      const reviewFile = resolve(reviewPackageDirectory, `${fixture.id}-review.json`);
+      const reviewFile = resolve(
+        reviewPackageDirectory,
+        `${fixture.id}-review.json`,
+      );
       const rawReview = JSON.parse(await readFile(reviewFile, "utf8"));
       const parsedReview = parseHumanReview(rawReview);
       record.humanReview = parsedReview.verdict;

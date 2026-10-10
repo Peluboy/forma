@@ -23,6 +23,16 @@ export type DocContentBlock = {
   sourceSpanIds?: string[];
 };
 
+/** Stable link from a projected editor node back to its DesignSpec source. */
+export type DesignSpecLink = {
+  designSpecId: string;
+  designSpecPageId: string;
+  designSpecElementId?: string;
+  sourceSpanIds?: string[];
+  projectionId?: string;
+  projectionVersion?: string;
+};
+
 /** Continuation metadata shared by text frames and tables split across pages. */
 export type FlowContinuation = {
   continuationIndex: number;
@@ -57,6 +67,7 @@ export type FlowTextFrame = {
   continuation?: FlowContinuation;
   /** True when this frame intentionally repeats content on a continuation. */
   continuedLabel?: string;
+  designLink?: DesignSpecLink;
 };
 
 export type FlowTableElement = {
@@ -78,6 +89,7 @@ export type FlowTableElement = {
   /** Per-cell manuscript provenance, aligned with `rows` (row → cell → span ids). */
   cellSourceSpanIds?: string[][][];
   continuation?: FlowContinuation;
+  designLink?: DesignSpecLink;
 };
 
 /**
@@ -99,6 +111,7 @@ export type FlowShapeElement = {
   opacity?: number;
   locked?: boolean;
   hidden?: boolean;
+  designLink?: DesignSpecLink;
 };
 
 export type FlowImageElement = {
@@ -117,6 +130,7 @@ export type FlowImageElement = {
   opacity?: number;
   locked?: boolean;
   hidden?: boolean;
+  designLink?: DesignSpecLink;
 };
 
 export type FlowChartElement = {
@@ -132,6 +146,7 @@ export type FlowChartElement = {
   height: number;
   opacity?: number;
   hidden?: boolean;
+  designLink?: DesignSpecLink;
 };
 
 export type FlowDecorationElement =
@@ -149,6 +164,7 @@ export type FlowPage = {
   background?: string;
   role?: PageRole;
   designMetadata?: Record<string, unknown>;
+  designLink?: DesignSpecLink;
 };
 
 export type FlowMaster = {

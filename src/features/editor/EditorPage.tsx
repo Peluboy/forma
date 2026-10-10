@@ -231,7 +231,7 @@ export default function EditorPage() {
     setExportFormat((format) => {
       if (format === "pdf-native") return "pdf";
       if (project.family === "document")
-        return ["pdf", "json"].includes(format) ? format : "pdf";
+        return ["pdf", "pdf-image", "json"].includes(format) ? format : "pdf";
       if (project.family === "presentation")
         return ["pdf", "pptx", "json"].includes(format) ? format : "pdf";
       return ["png", "jpg", "jpeg", "svg", "pdf", "zip", "json"].includes(
@@ -952,6 +952,7 @@ export default function EditorPage() {
         onExportFormat={setExportFormat}
         onFocusIssue={focusIssue}
         onExport={() => void exportDesign()}
+        onUpdateProject={update}
         onResize={(patch) => {
           update(patch);
           closeDialog();

@@ -6,3 +6,4 @@ export * from "./adapters/fromFlowDocument.js";
 export * from "./fidelity/index.js";
 export * from "./adapters/toFlowDocument.js";
 export * from "./adapters/exportConsistency.js";
+export * from "./sync/index.js";

@@ -16,6 +16,11 @@ import {
   describePreflightForUser,
   previewNativeExport,
 } from "../../../domain/export";
+import {
+  describeSyncForUser,
+  inspectProjectSync,
+  nativeExportAllowed,
+} from "../../../domain/design-spec/sync";
 import type { User } from "../../../shared/api/api";
 import type { IssueTarget } from "../lib/editorNav";
 
@@ -35,6 +40,7 @@ export default function EditorExportDialog({
   user,
   onFocusIssue,
   onExport,
+  onResync,
   onClose,
 }: {
   project: Project;
@@ -48,6 +54,7 @@ export default function EditorExportDialog({
   user?: User | null;
   onFocusIssue: (issue: IssueTarget) => void;
   onExport: () => void;
+  onResync?: () => void;
   onClose: () => void;
 }) {
   const nativePreview = useMemo(() => {
@@ -88,7 +95,13 @@ export default function EditorExportDialog({
     "job" in nativePreview &&
     nativePreview.job.preflight?.status === "blocked";
   const visualBlocked =
-    format !== "json" && !isSelectablePdf(format) && issueCount > 0;
+    format !== "json" &&
+    format !== "pdf-image" &&
+    !isSelectablePdf(format) &&
+    issueCount > 0;
+  const syncState =
+    project.family === "document" ? inspectProjectSync(project) : undefined;
+  const syncGate = syncState ? nativeExportAllowed(syncState) : "allow";
   return (
     <Modal title="Export" onClose={onClose}>
       <p className="text-xs leading-[1.8] text-text-tertiary mt-3 mb-5">
@@ -106,6 +119,7 @@ export default function EditorExportDialog({
           {project.family === "document" ? (
             <>
               <option value="pdf">PDF — selectable text</option>
+              <option value="pdf-image">PDF — flattened pages</option>
               <option value="json">Editable Forma file (.json)</option>
             </>
           ) : project.family === "presentation" ? (
@@ -157,6 +171,12 @@ export default function EditorExportDialog({
         </div>
       )}
 
+      {project.family === "document" && syncState && (
+        <p className="text-[11px] leading-[1.6] text-text-secondary mt-4 mb-0">
+          {describeSyncForUser(syncState)}
+        </p>
+      )}
+
       {isSelectablePdf(format) && nativeMessages.length > 0 && (
         <div
           className={`text-[11px] leading-[1.6] p-3 mt-4 rounded-[7px] border ${
@@ -205,6 +225,20 @@ export default function EditorExportDialog({
         )}
 
       {/* CTA */}
+      {project.family === "document" &&
+        onResync &&
+        (syncGate === "block" || syncGate === "warn") && (
+          <Button
+            variant="secondary"
+            fullWidth
+            className="mt-4"
+            disabled={exporting}
+            onClick={onResync}
+          >
+            Sync latest edits
+          </Button>
+        )}
+
       <Button
         variant="primary"
         fullWidth
