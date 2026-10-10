@@ -230,7 +230,7 @@ export default function HomePage() {
             <p>
               Bring a reference. Bring your manuscript.
               <br className="desktop-break" /> Make them work beautifully
-              together—without losing a word.
+              together, without losing a word.
             </p>
             <div className="hero-actions">
               <a className="button primary large" href="/create">
@@ -426,7 +426,7 @@ export default function HomePage() {
             starts with your words.
           </h2>
           <p>
-            Make something that looks like you—and says exactly what you mean.
+            Make something that looks like you, and says exactly what you mean.
           </p>
           <a className="button primary large" href="/signup">
             Get started free
@@ -523,7 +523,7 @@ export function HelpPage() {
             A little guidance.
             <br />A lot of possibility.
           </h1>
-          <p>Answers for your first design—and the one after that.</p>
+          <p>Answers for your first design, and the one after that.</p>
         </div>
         <div className="help-quick-links">
           <a href="/onboarding">

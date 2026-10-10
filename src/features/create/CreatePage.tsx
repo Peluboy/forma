@@ -3,12 +3,25 @@ import {
   ArrowLeft,
   FileImage,
   FileText,
+  LayoutGrid,
   LoaderCircle,
+  Presentation,
   Sparkles,
 } from "lucide-react";
 import { post, api, useAccount } from "../../shared/api/api";
-import { Button } from "../../shared/components/ui/Button";
 import { ThemeToggle } from "../../shared/components/ThemeToggle";
+import {
+  Button,
+  ChoiceCard,
+  DropZone,
+  EmptyProjectIllustration,
+  IllustrationPanel,
+  Select,
+  Stepper,
+  TextArea,
+  createStepIndex,
+  saveDestinationLabel,
+} from "../../ui";
 import { START_KEY } from "../../shared/navigation";
 import { CreativeDirections } from "./components/CreativeDirections";
 import { CreateWorkspaceSelector } from "./CreateWorkspaceSelector";
@@ -139,8 +152,7 @@ export default function CreatePage() {
   const [referenceBusy, setReferenceBusy] = useState(false);
   const [referenceError, setReferenceError] = useState("");
   const [useReferenceStyle, setUseReferenceStyle] = useState(true);
-  const [referenceProvider, setReferenceProvider] =
-    useState<AnalysisProviderId>("gemini");
+  const [referenceProvider] = useState<AnalysisProviderId>("gemini");
   const [templateRecords, setTemplateRecords] = useState<
     TemplateFamilyRecord[]
   >([]);
@@ -489,33 +501,52 @@ export default function CreatePage() {
       );
     }
   }
+  const workspaceName = workspaces.find(
+    (w) => w.id === selectedWorkspaceId,
+  )?.name;
+  const clientName = clients.find((c) => c.id === selectedClientId)?.name;
+  const step = createStepIndex({
+    hasContent: Boolean(manuscript.trim()),
+    generating: busy,
+    hasResults: Boolean(concepts.length || pipelineResult),
+  });
+  const familyIcons = {
+    graphics: <LayoutGrid size={14} />,
+    document: <FileText size={14} />,
+    presentation: <Presentation size={14} />,
+  } as const;
   return (
-    <div className="min-h-dvh bg-bg-page text-text-primary font-[var(--font-ui)]">
-      <header className="flex min-h-16 items-center justify-between gap-4 border-b border-border bg-bg-panel px-5 md:px-8">
+    <div className="min-h-dvh bg-bg-page text-text-primary">
+      <header className="flex h-[60px] items-center justify-between gap-4 border-b border-border bg-bg-panel px-5 md:px-8">
         <a
           href="/dashboard"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-text-primary no-underline"
+          className="inline-flex items-center gap-2 text-[13px] font-semibold text-text-primary no-underline"
         >
-          <ArrowLeft size={17} /> My designs
+          <ArrowLeft size={16} /> My designs
         </a>
-        <strong className="font-[var(--font-display)] text-lg tracking-[-0.06em]">
+        <strong className="forma-display text-[17px]">
           forma<span className="text-accent">.</span>
         </strong>
         <ThemeToggle compact />
       </header>
-      <main className="mx-auto grid max-w-[1500px] gap-8 px-4 py-8 md:px-8 lg:grid-cols-[minmax(330px,430px)_minmax(0,1fr)] lg:gap-12 lg:py-12">
+      <main className="mx-auto grid max-w-[1280px] gap-8 px-4 py-6 md:px-8 lg:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] lg:py-8">
         <section className="min-w-0">
-          <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-accent">
-            Create with AI
-          </span>
-          <h1 className="mt-2 mb-2 font-[var(--font-display)] text-[clamp(32px,4vw,48px)] font-semibold leading-[1.08] tracking-[-0.07em]">
+          <Stepper
+            className="mb-6"
+            currentStepIndex={step}
+            steps={[
+              { id: "words", label: "Words" },
+              { id: "style", label: "Style" },
+              { id: "review", label: "Review" },
+            ]}
+          />
+          <h1 className="forma-display m-0 text-[clamp(28px,3.6vw,40px)] font-semibold leading-[1.08]">
             Start with your words.
           </h1>
-          <p className="mb-8 max-w-[42ch] text-sm leading-6 text-text-secondary">
-            Explore three editable design directions for your content. You
-            choose what becomes final.
+          <p className="mt-2 mb-6 text-[13px] text-text-secondary">
+            {saveDestinationLabel({ workspaceName, clientName })}
           </p>
-          <div className="space-y-6">
+          <div className="flex flex-col gap-5">
             <CreateWorkspaceSelector
               workspaces={workspaces}
               clients={clients}
@@ -527,280 +558,137 @@ export default function CreatePage() {
               }}
               onSelectClient={setSelectedClientId}
             />
-            <fieldset>
-              <legend className="mb-2 text-sm font-semibold">
+            <fieldset className="m-0 border-0 p-0">
+              <legend className="mb-2 text-[13px] font-semibold">
                 What are you making?
               </legend>
-              <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+              <div className="grid gap-2">
                 {familyChoices.map((choice) => (
-                  <label
+                  <ChoiceCard
                     key={choice.id}
-                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${family === choice.id ? "border-accent bg-accent-muted" : "border-border bg-bg-panel"}`}
-                  >
-                    <input
-                      type="radio"
-                      name="family"
-                      value={choice.id}
-                      checked={family === choice.id}
-                      onChange={() => {
-                        setFamily(choice.id);
-                        setConcepts([]);
-                      }}
-                      className="mt-1 accent-[var(--accent)]"
-                    />
-                    <span>
-                      <strong className="block text-sm">{choice.label}</strong>
-                      <small className="text-xs text-text-secondary">
-                        {choice.detail}
-                      </small>
-                    </span>
-                  </label>
+                    name="family"
+                    value={choice.id}
+                    checked={family === choice.id}
+                    onChange={() => {
+                      setFamily(choice.id);
+                      setConcepts([]);
+                    }}
+                    title={choice.label}
+                    description={choice.detail}
+                    icon={familyIcons[choice.id]}
+                  />
                 ))}
               </div>
             </fieldset>
             {family === "graphics" && (
-              <label className="block text-sm font-semibold">
-                Size
-                <select
-                  value={format}
-                  onChange={(event) => {
-                    setFormat(event.target.value as CreativeBrief["format"]);
-                    setConcepts([]);
-                  }}
-                  className="mt-2 h-11 w-full rounded-lg border border-border-strong bg-bg-panel px-3 text-sm font-normal text-text-primary"
-                >
-                  <option value="portrait">Portrait flyer</option>
-                  <option value="square">Square post</option>
-                  <option value="story">Story</option>
-                  <option value="banner">Banner</option>
-                </select>
-              </label>
+              <Select
+                label="Size"
+                value={format}
+                onChange={(event) => {
+                  setFormat(event.target.value as CreativeBrief["format"]);
+                  setConcepts([]);
+                }}
+              >
+                <option value="portrait">Portrait flyer</option>
+                <option value="square">Square post</option>
+                <option value="story">Story</option>
+                <option value="banner">Banner</option>
+              </Select>
             )}
             {family === "document" && (
               <div className="space-y-3">
-                <label className="block text-sm font-semibold">
-                  Document Workflow
-                  <select
-                    value={docMode}
-                    onChange={(event) => {
-                      setDocMode(event.target.value as "report" | "standard");
-                      setConcepts([]);
-                      setPipelineResult(null);
-                    }}
-                    className="mt-2 h-11 w-full rounded-lg border border-border-strong bg-bg-panel px-3 text-sm font-normal text-text-primary"
+                <Select
+                  label="Document type"
+                  value={docMode}
+                  onChange={(event) => {
+                    setDocMode(event.target.value as "report" | "standard");
+                    setConcepts([]);
+                    setPipelineResult(null);
+                  }}
+                >
+                  <option value="report">Branded report</option>
+                  <option value="standard">Document</option>
+                </Select>
+                {docMode === "report" && templateAuthoringEnabled() && (
+                  <Select
+                    label="Template"
+                    value={selectedTemplateId}
+                    onChange={(event) =>
+                      setSelectedTemplateId(event.target.value)
+                    }
                   >
-                    <option value="report">
-                      Multi-page Branded Report (Forma AI Designer)
-                    </option>
-                    <option value="standard">
-                      Standard Article / Document
-                    </option>
-                  </select>
-                </label>
-                {docMode === "report" && (
-                  <div className="space-y-3">
-                    {templateAuthoringEnabled() && (
-                      <label className="block text-sm font-semibold">
-                        Template
-                        <select
-                          value={selectedTemplateId}
-                          onChange={(event) =>
-                            setSelectedTemplateId(event.target.value)
-                          }
-                          className="mt-2 h-11 w-full rounded-lg border border-border-strong bg-bg-panel px-3 text-sm font-normal text-text-primary"
-                        >
-                          <option value="">
-                            Forma Editorial Report (built-in, approved)
-                          </option>
-                          {scopedTemplateRecords.map((record) => (
-                            <option key={record.id} value={record.id}>
-                              {record.clientId === selectedClientId
-                                ? "[Client] "
-                                : record.workspaceId === selectedWorkspaceId
-                                  ? "[Workspace] "
-                                  : ""}
-                              {record.name} · v{record.versionNumber}
-                              {record.source === "forked" ? " · forked" : ""}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
-                    <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3.5 text-xs text-text-secondary flex items-start gap-2.5">
-                      <Sparkles className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                      <div>
-                        <strong className="block text-text-primary font-medium mb-0.5">
-                          Template:{" "}
-                          {selectedTemplate
-                            ? selectedTemplate.name
-                            : "Forma Editorial Report"}
-                        </strong>
-                        <span>
-                          {selectedTemplate
-                            ? `An approved template record (${selectedTemplate.source}, v${selectedTemplate.versionNumber}${
-                                selectedTemplate.sharing?.visibility
-                                  ? `, ${selectedTemplate.sharing.visibility}`
-                                  : ""
-                              }). Only approved layouts are used.`
-                            : "Structured multi-page layouts with exact copy integrity, measured fit checking, and visual critique."}
-                        </span>
-                        {selectedTemplate?.forkedFrom && (
-                          <span className="mt-1 block text-text-secondary">
-                            Forked from{" "}
-                            {selectedTemplate.forkedFrom.originalTemplateId}
-                            {" · "}
-                            {selectedTemplate.forkedFrom.forkedAt.slice(0, 10)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                    <option value="">Editorial report</option>
+                    {scopedTemplateRecords.map((record) => (
+                      <option key={record.id} value={record.id}>
+                        {record.name}
+                      </option>
+                    ))}
+                  </Select>
                 )}
               </div>
             )}
-            <div>
-              <label
-                htmlFor="creative-copy"
-                className="mb-2 block text-sm font-semibold"
-              >
-                Approved manuscript
-              </label>
-              <textarea
-                id="creative-copy"
-                value={manuscript}
-                maxLength={30000}
-                onChange={(event) => {
-                  setManuscript(event.target.value);
-                  setConcepts([]);
-                }}
-                placeholder="Paste the exact words to include"
-                className="min-h-40 w-full resize-y rounded-xl border border-border-strong bg-bg-panel p-3 text-sm leading-6 text-text-primary placeholder:text-text-tertiary focus:outline-2 focus:outline-offset-2 focus:outline-accent"
-              />
-              <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-accent focus-within:outline-2 focus-within:outline-accent">
-                <FileText size={16} /> Upload TXT, DOCX, Markdown or text PDF
-                <input
-                  type="file"
-                  accept=".txt,.md,.docx,.pdf"
-                  className="sr-only"
-                  onChange={(event) => void readCopy(event.target.files?.[0])}
-                />
-              </label>
-            </div>
-            <div>
-              <span className="mb-2 block text-sm font-semibold">
-                Visual reference{" "}
-                <span className="font-normal text-text-tertiary">optional</span>
-              </span>
-              <label className="flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border-strong bg-bg-panel p-3 text-sm text-text-secondary focus-within:outline-2 focus-within:outline-accent">
-                <FileImage size={19} />{" "}
-                {referenceName || "Upload a PNG, JPG or WebP design"}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="sr-only"
-                  onChange={(event) =>
-                    void readReference(event.target.files?.[0])
-                  }
-                />
-              </label>
-            </div>
+            <TextArea
+              id="creative-copy"
+              label="Your manuscript"
+              value={manuscript}
+              maxLength={30000}
+              rows={8}
+              placeholder="Paste the exact words to include"
+              onChange={(event) => {
+                setManuscript(event.target.value);
+                setConcepts([]);
+              }}
+            />
+            <DropZone
+              title="Upload a file"
+              hint="TXT, DOCX, Markdown, or PDF"
+              accept=".txt,.md,.docx,.pdf"
+              onFile={(file) => void readCopy(file)}
+            />
+            <DropZone
+              title="Add a reference"
+              hint="Optional PNG, JPG, or WebP"
+              accept="image/png,image/jpeg,image/webp"
+              fileName={referenceName || undefined}
+              icon={<FileImage size={18} />}
+              onFile={(file) => void readReference(file)}
+            />
             {family === "document" &&
               docMode === "report" &&
               referenceIntelligenceEnabled() &&
               reference && (
-                <div className="space-y-3 rounded-xl border border-border bg-bg-panel p-3.5">
+                <div className="rounded-2xl border border-border bg-bg-panel p-4">
                   <div className="flex items-center justify-between gap-2">
-                    <strong className="text-sm">
-                      Reference design intelligence
-                    </strong>
-                    <span className="text-[11px] text-text-tertiary">
-                      v1 · not reconstruction
-                    </span>
-                  </div>
-                  <p className="text-xs leading-5 text-text-secondary">
-                    Extract palette, typography and layout patterns to generate
-                    a new editable document in a similar visual language.
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <label className="text-xs text-text-secondary">
-                      Provider{" "}
-                      <select
-                        aria-label="Reference analysis provider"
-                        value={referenceProvider}
-                        onChange={(event) =>
-                          setReferenceProvider(
-                            event.target.value as AnalysisProviderId,
-                          )
-                        }
-                        className="h-9 rounded-lg border border-border-strong bg-bg-panel px-2 text-xs"
-                      >
-                        <option
-                          value="gemini"
-                          disabled={!session.capabilities?.analysis?.gemini}
-                        >
-                          Gemini vision
-                        </option>
-                        <option
-                          value="local"
-                          disabled={!session.capabilities?.analysis?.local}
-                        >
-                          Local OCR
-                        </option>
-                        <option
-                          value="openai"
-                          disabled={!session.capabilities?.analysis?.openai}
-                        >
-                          OpenAI vision
-                        </option>
-                      </select>
-                    </label>
+                    <strong className="text-[13px]">Reference style</strong>
                     <Button
                       variant="secondary"
                       size="sm"
                       disabled={referenceBusy}
                       onClick={() => void analyzeReferenceStyle()}
                     >
-                      {referenceBusy ? "Analyzing…" : "Analyze reference"}
+                      {referenceBusy ? "Reviewing…" : "Review style"}
                     </Button>
                   </div>
                   {referenceError && (
-                    <p role="alert" className="text-xs text-danger">
+                    <p role="alert" className="mt-2 text-xs text-danger">
                       {referenceError}
                     </p>
                   )}
                   {referenceProfile && (
-                    <div className="space-y-2 text-xs text-text-secondary">
+                    <div className="mt-3 space-y-2">
                       <div className="flex flex-wrap gap-1.5">
                         {referenceProfile.extractedTokens.colors
                           .slice(0, 7)
                           .map((color) => (
                             <span
                               key={color.id}
-                              className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5"
-                            >
-                              <span
-                                aria-hidden
-                                style={{ background: color.value }}
-                                className="inline-block h-3 w-3 rounded-sm border border-border"
-                              />
-                              {color.role}
-                            </span>
+                              title={color.role}
+                              className="h-5 w-5 rounded-full border border-border"
+                              style={{ background: color.value }}
+                            />
                           ))}
                       </div>
-                      <div>
-                        Tone: {referenceProfile.visualLanguage.tone} · Density:{" "}
-                        {referenceProfile.visualLanguage.density} · Images:{" "}
-                        {referenceProfile.visualLanguage.imageUsage} · Data:{" "}
-                        {referenceProfile.visualLanguage.dataUsage} ·
-                        Confidence:{" "}
-                        {Math.round(referenceProfile.confidence.overall * 100)}%
-                      </div>
-                      {referenceProfile.warnings.slice(0, 4).map((item) => (
-                        <div key={item.code} className="text-text-tertiary">
-                          ⚠ {item.message}
-                        </div>
-                      ))}
-                      <label className="flex items-center gap-2 text-text-primary">
+                      <label className="flex items-center gap-2 text-[13px]">
                         <input
                           type="checkbox"
                           checked={useReferenceStyle}
@@ -808,49 +696,43 @@ export default function CreatePage() {
                             setUseReferenceStyle(event.target.checked)
                           }
                           className="accent-[var(--accent)]"
-                        />{" "}
-                        Use reference style for generation
+                        />
+                        Use this style
                       </label>
                     </div>
                   )}
                 </div>
               )}
             {reference && (
-              <fieldset>
-                <legend className="mb-2 text-sm font-semibold">
-                  How should the reference guide the design?
+              <fieldset className="m-0 border-0 p-0">
+                <legend className="mb-2 text-[13px] font-semibold">
+                  How close should we follow it?
                 </legend>
                 <div className="grid grid-cols-3 gap-2">
                   {(
                     [
                       ["close", "Follow closely"],
                       ["style", "Keep the style"],
-                      ["explore", "Explore ideas"],
+                      ["explore", "Explore"],
                     ] as const
                   ).map(([id, label]) => (
-                    <label
+                    <ChoiceCard
                       key={id}
-                      className={`cursor-pointer rounded-lg border p-2 text-center text-xs font-semibold ${freedom === id ? "border-accent bg-accent-muted" : "border-border bg-bg-panel"}`}
-                    >
-                      <input
-                        type="radio"
-                        name="freedom"
-                        value={id}
-                        checked={freedom === id}
-                        onChange={() => {
-                          setFreedom(id);
-                          setConcepts([]);
-                        }}
-                        className="sr-only"
-                      />
-                      {label}
-                    </label>
+                      name="freedom"
+                      value={id}
+                      checked={freedom === id}
+                      onChange={() => {
+                        setFreedom(id);
+                        setConcepts([]);
+                      }}
+                      title={label}
+                    />
                   ))}
                 </div>
               </fieldset>
             )}
             {brand?.name && (
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 text-[13px]">
                 <input
                   type="checkbox"
                   checked={useBrand}
@@ -859,50 +741,45 @@ export default function CreatePage() {
                     setConcepts([]);
                   }}
                   className="accent-[var(--accent)]"
-                />{" "}
+                />
                 Use {brand.name} colors and fonts
               </label>
             )}
-            <div className="border-t border-border pt-5">
-              <Button
-                variant="primary"
-                fullWidth
-                disabled={!ready || busy || !manuscript.trim()}
-                onClick={() => void generate()}
-              >
-                {busy ? (
+            <Button
+              variant="primary"
+              fullWidth
+              size="lg"
+              disabled={!ready || busy || !manuscript.trim()}
+              iconLeft={
+                busy ? (
                   <LoaderCircle size={17} className="animate-spin" />
                 ) : (
                   <Sparkles size={17} />
-                )}{" "}
-                {busy
-                  ? pipelineProgress
-                    ? pipelineProgress.message
-                    : "Creating directions…"
-                  : family === "document" && docMode === "report"
-                    ? "Generate Branded Report"
-                    : session.user
-                      ? "Create three directions"
-                      : "Sign in to create"}
-              </Button>
-              <p className="mt-3 text-xs leading-5 text-text-tertiary">
-                {family === "document" && docMode === "report"
-                  ? "Forma AI Designer structures page sequences, binds exact approved copy, and applies visual critique."
-                  : "Sign-in is required before generating. Your manuscript and optional reference are then sent to Google Gemini for design planning. Forma renders your exact copy separately; AI suggestions do not rewrite it."}
+                )
+              }
+              onClick={() => void generate()}
+            >
+              {busy
+                ? pipelineProgress
+                  ? pipelineProgress.message
+                  : "Creating design…"
+                : family === "document" && docMode === "report"
+                  ? "Create design"
+                  : session.user
+                    ? "Explore directions"
+                    : "Sign in to create"}
+            </Button>
+            {error && (
+              <p
+                role="alert"
+                className="rounded-xl bg-danger-muted p-3 text-sm text-danger"
+              >
+                {error}
               </p>
-              {error && (
-                <p
-                  role="alert"
-                  className="mt-3 rounded-lg bg-danger-muted p-3 text-sm text-danger"
-                >
-                  {error}
-                </p>
-              )}
-            </div>
+            )}
           </div>
         </section>
 
-        {/* Right Section: Either Pipeline Progress/Result OR Creative Directions */}
         {pipelineProgress ? (
           <CreatePipelineProgressView progress={pipelineProgress} />
         ) : pipelineResult ? (
@@ -910,11 +787,18 @@ export default function CreatePage() {
             pipelineResult={pipelineResult}
             onOpenProject={openPipelineProject}
           />
-        ) : (
+        ) : concepts.length ? (
           <CreativeDirections
             concepts={concepts}
             projects={projects}
             onOpen={openProject}
+          />
+        ) : (
+          <IllustrationPanel
+            scene="create"
+            title="Pages will appear here"
+            description="Add your words, pick a style, then review the pages."
+            art={<EmptyProjectIllustration size={88} />}
           />
         )}
       </main>

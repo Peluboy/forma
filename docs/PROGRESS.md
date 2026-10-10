@@ -1,5 +1,38 @@
 # Delivery progress
 
+## October 9, 2026: Phase 7.6 — UI Rescue, Art Direction, and Product Shell Polish
+
+- **Direction**: Light-first creative studio. Warm paper background, mint accent only, charcoal dark as opt-in. Editor uses light panels and a dotted canvas. Proof at `/dev/ui-direction`.
+- **Docs**: `UI_RESCUE_SCREENSHOT_CRITIQUE.md`, `UI_DIRECTION_PHASE_7_6.md`, `FORMA_VISUAL_SYSTEM_V2.md`, `UI_COPY_REDUCTION_PHASE_7_6.md`.
+- **System**: `AppShell` + `ProductSidebar` + `Topbar` + `HeroPanel`, action/choice cards, drop zone, search, segmented control, preview cards, gradient artwork.
+- **Screens**: Dashboard (light hero, preview-first cards), Create (stepper, type cards, live preview column), Workspaces (shell, modals, client cards), Gallery (light hero), Editor (rail/canvas contrast), Auth/landing copy and gradient.
+- **Tests**: `tests/ui-helpers.test.ts` for context labels, create steps, and access copy.
+
+## October 9, 2026: Phase 7.5 — Product UI, Flow, and Visual System Redesign
+
+- **Audit & Strategy**:
+  - `docs/PRODUCT_UI_FLOW_AUDIT_PHASE_7_5.md`: Exhaustive 25-point audit of user journeys, confusing screens, text-heavy areas, inconsistent cards/buttons/badges/spacing/typography, missing states, and dev tools leaking into user flows.
+  - `docs/PRODUCT_UI_FLOW_REDESIGN_PHASE_7_5.md`: Information architecture separating Personal Studio (`/dashboard`, `/create`, `/editor`), Agency Hub (`/workspaces`), and Quarantined Developer Suite (`/dev/*`).
+  - `docs/FORMA_UI_SYSTEM_V1.md`: Modern creative design platform visual foundation (deep emerald accents, calm slate neutrals, soft mesh gradients, crisp elevation, rounded geometry).
+  - `docs/UI_COPY_GUIDELINES.md`: Plain English translation dictionary removing technical jargon (e.g. "Run AI Designer Pipeline" -> "Create design", "Exact Copy validation" -> "Copy check", no em dashes).
+  - `docs/STATUS_LANGUAGE_SYSTEM.md`: Standardized status taxonomy with semantic pills and deterministic mapping.
+- **Forma UI System (`src/ui/`)**:
+  - `primitives`: `Button`, `IconButton`, `Input`, `Select`, `TextArea`, `Toggle`, `Badge`, `Card`, `MetricCard`, `Stepper`, `Tabs`, `Modal`, `Tooltip`, `Notice`, `Progress`, `EmptyState`, `LoadingState`, `SkeletonCard`, `ErrorState`.
+  - `art`: `FormaLogo`, `FormaGradientMesh`, `ReportDocumentIllustration`, `SlideDocumentIllustration`, `GraphicDocumentIllustration`, `EmptyProjectIllustration`, `EmptySearchIllustration`, `EmptyWorkspaceIllustration`.
+  - `status`: `StatusBadge`, `TrustStatus`, `CopyCheckBadge`, `FitCheckBadge`, `ReferenceStatusBadge`, `TemplateStatusBadge`, `WorkspaceRoleBadge`, `statusMap`.
+  - `layout`: `AppShell`, `PageHeader`, `SectionHeader`, `Breadcrumbs`, `PageGrid`.
+  - `cards`: `ProjectCard`, `TemplateCard`, `ReferenceCard`, `ClientCard`, `WorkspaceCard`.
+- **UI Playground**: Exposed at `/dev/ui` (`UiPlaygroundPage.tsx`), rendering all design tokens, controls, form inputs, status badges, project/template/client cards, art illustrations, and modals.
+- **Screen Redesigns & Polish**:
+  - `Dashboard`: Integrated reusable `ProjectCard`, `EmptyState`, and `SkeletonCard` loading states; linked Workspaces in sidebar.
+  - `CreatePage`: Unified `CreateWorkspaceSelector` using system `Select` inputs; simplified progress labels and card copy ("Create design").
+  - `WorkspacePage` & `ClientDashboard`: Integrated `ClientCard` and `ProjectCard`; streamlined empty states and action buttons.
+  - `TemplateGalleryPage`: Replaced ad-hoc cards with `TemplateCard` and `EmptyState`.
+  - `EditorQualityPanel`: Cleaned up copy ("Design Quality", "Editable Output", "Copy check: Passed", "Fit check: Fits page").
+- **Quality Gates & Tests**:
+  - `tests/status-language.test.ts`: Verified plain English mappings for quality scores, fidelity, copy, fit, template states, and roles.
+  - 191 unit tests passing (1 new suite); source layout check clean (238 TypeScript files); typecheck clean; production build succeeded.
+
 ## October 9, 2026: Phase 7 — Agency Workspace v1
 
 - **Audit-first**: `docs/AGENCY_WORKSPACE_PHASE_7.md` documents current ownership models, personal vs owner-scoped records, workspace and client scoping additions, local and hosted persistence capabilities, and explicit boundaries (no billing, no paid seats, no marketplace monetization, no real-time multi-cursor collaboration, no client login portal, no CRM).

@@ -24,8 +24,8 @@
   height: 31px;
   border-radius: 9px 9px 9px 3px;
   transform: rotate(-8deg);
-  background: var(--chrome-rail);
-  color: #e1f2eb;
+  background: var(--gradient-accent);
+  color: #fff;
   font: 700 25px/1 var(--font-display);
   letter-spacing: -0.08em;
 }
@@ -64,8 +64,8 @@
 .app-shell .tool-rail {
   width: 76px;
   padding: 12px 6px 10px;
-  background: var(--chrome-rail);
-  border-right: 0;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
 }
 .app-shell .rail-top {
   gap: 3px;
@@ -81,29 +81,29 @@
   letter-spacing: -0.01em;
 }
 .app-shell .rail-item:hover {
-  background: var(--chrome-rail-hover);
-  color: #f6fbf7;
+  background: var(--bg-muted);
+  color: var(--text-primary);
 }
 .app-shell .rail-item.selected {
-  background: var(--chrome-rail-selected);
-  color: #183d32;
+  background: var(--accent-muted);
+  color: var(--selected-fg);
 }
 .app-shell .rail-divider {
   width: 34px;
-  background: rgba(222, 242, 231, 0.22);
+  background: var(--border);
   margin-block: 6px;
 }
 .app-shell .rail-bottom {
-  border-top-color: rgba(222, 242, 231, 0.22);
+  border-top-color: var(--border);
 }
 .app-shell .rail-avatar {
-  background: var(--chrome-rail-hover);
-  color: #e1f2eb;
+  background: var(--accent-muted);
+  color: var(--selected-fg);
   width: 34px;
   height: 34px;
 }
 .app-shell .tool-rail :is(button, a):focus-visible {
-  outline: 2px solid #e1f2eb;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
   box-shadow: none;
 }
@@ -137,8 +137,14 @@
 }
 .app-shell .element-category {
   min-height: 74px;
-  border-radius: 9px;
+  border-radius: 12px;
   font-weight: 600;
+  background: var(--bg-muted);
+  border: 1px solid transparent;
+}
+.app-shell .element-category:hover {
+  background: var(--accent-muted);
+  border-color: var(--border);
 }
 .app-shell .element-category:focus-visible {
   outline: 2px solid var(--accent);
@@ -170,7 +176,9 @@
   border-radius: 8px;
 }
 .app-shell .canvas-workspace {
-  background: var(--canvas-stage);
+  background-color: var(--canvas-stage);
+  background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px);
+  background-size: 18px 18px;
   padding: 22px 28px 32px;
 }
 .app-shell .canvas-topline {
@@ -185,9 +193,7 @@
   font-variant-numeric: tabular-nums;
 }
 .app-shell .artboard {
-  box-shadow:
-    0 2px 6px rgba(10, 28, 19, 0.08),
-    0 24px 70px rgba(10, 28, 19, 0.16);
+  box-shadow: var(--shadow-lg);
 }
 .app-shell .canvas-footer {
   height: 44px;
@@ -227,6 +233,19 @@
   font-size: 19px;
   font-weight: 650;
   letter-spacing: -0.04em;
+}
+.app-shell .content-fields {
+  display: grid;
+  gap: 12px;
+}
+.app-shell .content-field {
+  display: grid;
+  gap: 6px;
+}
+.app-shell .content-advanced summary {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 @media (min-width: 1200px) {

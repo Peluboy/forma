@@ -1,7 +1,11 @@
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { Project } from "../../../domain/design/model";
 import type { CreativeConcept } from "../../../domain/design/creativeDesign";
-import { Button } from "../../../shared/components/ui/Button";
+import {
+  Button,
+  IllustrationPanel,
+  EmptyProjectIllustration,
+} from "../../../ui";
 import Poster from "../../editor/components/Poster";
 import { DocumentPageView } from "../../editor/canvas/DocumentCanvas";
 import { SlideView } from "../../editor/canvas/PresentationCanvas";
@@ -34,18 +38,13 @@ export function CreativeDirections({
         </span>
       </div>
       {concepts.length === 0 ? (
-        <div className="grid min-h-[480px] place-items-center text-center">
-          <div>
-            <Sparkles size={30} className="mx-auto mb-4 text-accent" />
-            <p className="m-0 text-sm font-semibold">
-              Your directions will appear here.
-            </p>
-            <p className="mx-auto mt-2 max-w-[32ch] text-sm leading-6 text-text-secondary">
-              Add your words and create designs to compare their layouts and
-              visual styles.
-            </p>
-          </div>
-        </div>
+        <IllustrationPanel
+          scene="create"
+          className="min-h-[480px] border-0"
+          title="Pages will appear here"
+          description="Add your words, then create designs to compare."
+          art={<EmptyProjectIllustration size={88} />}
+        />
       ) : (
         <div className="mt-6 grid gap-4 xl:grid-cols-3">
           {concepts.map((concept, index) => {

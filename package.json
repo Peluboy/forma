@@ -7,7 +7,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "tsc -b && tsc -p tsconfig.server.json && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --import tsx --test tests/model.test.ts tests/document.test.ts tests/analysis.test.ts tests/design-system.test.ts tests/creative-design.test.ts tests/flow-document.test.ts tests/team-ops.test.ts tests/presentation.test.ts tests/canvas-interact.test.ts tests/theme.test.ts tests/editor-nav.test.ts tests/editor-canvas-model.test.ts tests/foundation.test.ts tests/pipeline.test.ts tests/quality.test.ts tests/fidelity.test.ts tests/reference-design.test.ts tests/template-authoring.test.ts tests/template-sharing.test.ts tests/workspace.test.ts",
+    "test": "node --import tsx --test tests/model.test.ts tests/document.test.ts tests/analysis.test.ts tests/design-system.test.ts tests/creative-design.test.ts tests/flow-document.test.ts tests/team-ops.test.ts tests/presentation.test.ts tests/canvas-interact.test.ts tests/theme.test.ts tests/editor-nav.test.ts tests/editor-canvas-model.test.ts tests/foundation.test.ts tests/pipeline.test.ts tests/quality.test.ts tests/fidelity.test.ts tests/reference-design.test.ts tests/template-authoring.test.ts tests/template-sharing.test.ts tests/workspace.test.ts tests/status-language.test.ts tests/ui-helpers.test.ts",
     "test:e2e": "playwright test",
     "dev:web": "vite --host 127.0.0.1",
     "dev:api": "node --env-file-if-exists=.env --import tsx server/index.ts",

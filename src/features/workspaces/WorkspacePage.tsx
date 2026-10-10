@@ -1,9 +1,20 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Building2, LayoutTemplate, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { api, useAccount } from "../../shared/api/api";
-import { Button } from "../../shared/components/ui/Button";
-import { ThemeToggle } from "../../shared/components/ThemeToggle";
 import { PageMeta } from "../site/PublicSite";
+import {
+  AppShell,
+  Button,
+  EmptyState,
+  EmptyWorkspaceIllustration,
+  Input,
+  Modal,
+  Select,
+  Tabs,
+  TextArea,
+  WorkspaceRoleBadge,
+  ClientCard,
+} from "../../ui";
 import {
   createAgencyWorkspace,
   createPersonalWorkspace,
@@ -339,144 +350,151 @@ export default function WorkspacePage() {
   const selectedClient = clients.find((c) => c.id === selectedClientId) || null;
 
   return (
-    <div className="min-h-dvh bg-bg-page text-text-primary font-[var(--font-ui)]">
-      <PageMeta title="Agency Workspaces" privatePage />
-
-      {/* Header */}
-      <header className="flex min-h-16 items-center justify-between gap-4 border-b border-border bg-bg-panel px-5 md:px-8">
-        <div className="flex items-center gap-4">
-          <a
-            href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-text-primary no-underline hover:text-accent transition-colors"
-          >
-            <ArrowLeft size={17} /> Dashboard
-          </a>
-          <span className="text-border">|</span>
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Building2 size={16} className="text-accent" />
-            <span>Workspaces & Clients</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <ThemeToggle compact />
-        </div>
-      </header>
-
-      <main className="max-w-[1300px] mx-auto px-4 py-8 md:px-8 space-y-8">
+    <AppShell
+      activeNavId="workspaces"
+      contentWidth="wide"
+      userName={session.user?.name}
+      guest={!session.user}
+      currentScope={{
+        type: selectedWorkspace ? "workspace" : "personal",
+        name: selectedWorkspace?.name || "Workspaces",
+        subName: selectedClient?.name || "Clients",
+      }}
+      trail={
+        selectedWorkspace
+          ? `${selectedWorkspace.name}${selectedClient ? ` / ${selectedClient.name}` : ""}`
+          : "Workspaces"
+      }
+    >
+      <PageMeta title="Workspaces" privatePage />
+      <div className="flex flex-col gap-6">
         {error && (
-          <div className="p-3 rounded-md bg-rose-500/10 text-rose-500 text-xs border border-rose-500/20">
+          <div
+            className="rounded-2xl bg-danger-muted px-4 py-3 text-sm text-danger"
+            role="alert"
+          >
             {error}
           </div>
         )}
 
-        {/* Workspace Selector Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border bg-bg-panel">
-          <div className="flex items-center gap-3">
-            <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-              Workspace:
-            </label>
-            <select
-              value={selectedWorkspaceId}
-              onChange={(e) => {
-                setSelectedWorkspaceId(e.target.value);
-                setSelectedClientId(null);
-              }}
-              className="px-3 py-1.5 text-sm font-semibold rounded-md border border-border bg-bg-elevated text-text-primary focus:outline-hidden focus:border-accent"
-            >
-              {workspaces.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name} ({w.type})
-                </option>
-              ))}
-            </select>
-            {selectedWorkspace && (
-              <span className="text-xs px-2 py-0.5 rounded-full capitalize bg-bg-elevated text-text-secondary border border-border">
-                Role: {userRole}
-              </span>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            {workspaces.length > 0 && (
+              <Select
+                label="Workspace"
+                value={selectedWorkspaceId}
+                onChange={(e) => {
+                  setSelectedWorkspaceId(e.target.value);
+                  setSelectedClientId(null);
+                }}
+                fullWidth={false}
+                className="min-w-[200px]"
+              >
+                {workspaces.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </Select>
             )}
+            {selectedWorkspace && <WorkspaceRoleBadge role={userRole} />}
           </div>
-
           <Button
             size="sm"
             variant="secondary"
-            onClick={() => setShowCreateWs(!showCreateWs)}
+            iconLeft={<Plus size={14} />}
+            onClick={() => setShowCreateWs(true)}
           >
-            <Plus size={14} className="mr-1.5" /> New Workspace
+            New workspace
           </Button>
         </div>
 
-        {/* Create Workspace Collapsible Form */}
-        {showCreateWs && (
-          <form
-            onSubmit={handleCreateWorkspace}
-            className="p-5 rounded-xl border border-border bg-bg-panel space-y-4 max-w-xl"
-          >
-            <h3 className="text-sm font-bold text-text-primary">
-              Create Workspace
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">
-                  Workspace Name
-                </label>
-                <input
-                  type="text"
-                  value={newWsName}
-                  onChange={(e) => setNewWsName(e.target.value)}
-                  placeholder="Apex Creative Agency"
-                  className="w-full px-3 py-2 text-xs rounded-md border border-border bg-bg-elevated text-text-primary focus:outline-hidden focus:border-accent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">
-                  Type
-                </label>
-                <select
-                  value={newWsType}
-                  onChange={(e) =>
-                    setNewWsType(e.target.value as WorkspaceType)
-                  }
-                  className="w-full px-3 py-2 text-xs rounded-md border border-border bg-bg-elevated text-text-primary focus:outline-hidden focus:border-accent"
-                >
-                  <option value="agency">
-                    Agency (Multi-client, team collaboration)
-                  </option>
-                  <option value="team">Team (Single company team)</option>
-                  <option value="personal">Personal</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  value={newWsDesc}
-                  onChange={(e) => setNewWsDesc(e.target.value)}
-                  placeholder="Brand consistency and production studio"
-                  className="w-full px-3 py-2 text-xs rounded-md border border-border bg-bg-elevated text-text-primary focus:outline-hidden focus:border-accent"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" size="sm">
-                Create
-              </Button>
+        <Modal
+          open={showCreateWs}
+          onClose={() => setShowCreateWs(false)}
+          title="New workspace"
+        >
+          <form onSubmit={handleCreateWorkspace} className="space-y-4">
+            <Input
+              label="Name"
+              value={newWsName}
+              onChange={(e) => setNewWsName(e.target.value)}
+              placeholder="Apex Studio"
+              required
+            />
+            <Select
+              label="Type"
+              value={newWsType}
+              onChange={(e) => setNewWsType(e.target.value as WorkspaceType)}
+            >
+              <option value="agency">Agency</option>
+              <option value="team">Team</option>
+              <option value="personal">Personal</option>
+            </Select>
+            <Input
+              label="Description"
+              value={newWsDesc}
+              onChange={(e) => setNewWsDesc(e.target.value)}
+              placeholder="Optional"
+            />
+            <div className="flex justify-end gap-2">
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
                 onClick={() => setShowCreateWs(false)}
               >
                 Cancel
               </Button>
+              <Button type="submit" variant="primary">
+                Create
+              </Button>
             </div>
           </form>
-        )}
+        </Modal>
 
-        {/* If a client is selected, render ClientDashboard */}
+        <Modal
+          open={showCreateClient}
+          onClose={() => setShowCreateClient(false)}
+          title="New client"
+          description={
+            selectedWorkspace ? `Saved to ${selectedWorkspace.name}` : undefined
+          }
+        >
+          <form onSubmit={handleCreateClient} className="space-y-4">
+            <Input
+              label="Name"
+              value={newClientName}
+              onChange={(e) => setNewClientName(e.target.value)}
+              placeholder="Bloom Health"
+              required
+            />
+            <Input
+              label="Industry"
+              value={newClientDesc}
+              onChange={(e) => setNewClientDesc(e.target.value)}
+              placeholder="Optional"
+            />
+            <TextArea
+              label="Notes"
+              value={newClientNotes}
+              onChange={(e) => setNewClientNotes(e.target.value)}
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowCreateClient(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary">
+                Add client
+              </Button>
+            </div>
+          </form>
+        </Modal>
+
         {selectedClient && selectedWorkspace ? (
           <ClientDashboard
             workspace={selectedWorkspace}
@@ -489,214 +507,82 @@ export default function WorkspacePage() {
             userRole={userRole}
           />
         ) : selectedWorkspace ? (
-          /* Workspace Main View */
-          <div className="space-y-6">
-            {/* Workspace Tabs */}
-            <div className="flex gap-6 border-b border-border text-sm font-medium">
-              <button
-                onClick={() => setActiveTab("clients")}
-                className={`pb-2.5 transition-colors border-b-2 ${
-                  activeTab === "clients"
-                    ? "border-accent text-text-primary"
-                    : "border-transparent text-text-secondary hover:text-text-primary"
-                }`}
-              >
-                Clients ({clients.length})
-              </button>
-              <button
-                onClick={() => setActiveTab("templates")}
-                className={`pb-2.5 transition-colors border-b-2 ${
-                  activeTab === "templates"
-                    ? "border-accent text-text-primary"
-                    : "border-transparent text-text-secondary hover:text-text-primary"
-                }`}
-              >
-                Template Library
-              </button>
-              <button
-                onClick={() => setActiveTab("members")}
-                className={`pb-2.5 transition-colors border-b-2 ${
-                  activeTab === "members"
-                    ? "border-accent text-text-primary"
-                    : "border-transparent text-text-secondary hover:text-text-primary"
-                }`}
-              >
-                Team Members ({selectedWorkspace.members.length})
-              </button>
-            </div>
+          <div className="flex flex-col gap-6">
+            <Tabs
+              activeId={activeTab}
+              onChange={(id) =>
+                setActiveTab(id as "clients" | "templates" | "members")
+              }
+              items={[
+                { id: "clients", label: "Clients", badge: clients.length },
+                { id: "templates", label: "Templates" },
+                {
+                  id: "members",
+                  label: "Members",
+                  badge: selectedWorkspace.members.length,
+                },
+              ]}
+            />
 
-            {/* TAB: CLIENTS */}
             {activeTab === "clients" && (
-              <div className="space-y-6">
+              <div className="flex flex-col gap-5">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-bold text-text-primary">
-                      Agency Clients
-                    </h3>
-                    <p className="text-xs text-text-secondary mt-0.5">
-                      Organize designs, brands, and templates by client
-                      accounts.
-                    </p>
-                  </div>
+                  <h2 className="forma-display m-0 text-[20px]">Clients</h2>
                   {(userRole === "owner" || userRole === "admin") && (
                     <Button
                       size="sm"
-                      onClick={() => setShowCreateClient(!showCreateClient)}
+                      iconLeft={<Plus size={14} />}
+                      onClick={() => setShowCreateClient(true)}
                     >
-                      <Plus size={14} className="mr-1.5" /> Add Client
+                      New client
                     </Button>
                   )}
                 </div>
-
-                {/* Add Client Collapsible Form */}
-                {showCreateClient && (
-                  <form
-                    onSubmit={handleCreateClient}
-                    className="p-5 rounded-xl border border-border bg-bg-panel space-y-4 max-w-xl"
-                  >
-                    <h4 className="text-sm font-bold text-text-primary">
-                      Add New Client under {selectedWorkspace.name}
-                    </h4>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-medium text-text-secondary mb-1">
-                          Client Name
-                        </label>
-                        <input
-                          type="text"
-                          value={newClientName}
-                          onChange={(e) => setNewClientName(e.target.value)}
-                          placeholder="Acme Health & Fitness"
-                          className="w-full px-3 py-2 text-xs rounded-md border border-border bg-bg-elevated text-text-primary focus:outline-hidden focus:border-accent"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-text-secondary mb-1">
-                          Description / Industry
-                        </label>
-                        <input
-                          type="text"
-                          value={newClientDesc}
-                          onChange={(e) => setNewClientDesc(e.target.value)}
-                          placeholder="Corporate wellness & publications"
-                          className="w-full px-3 py-2 text-xs rounded-md border border-border bg-bg-elevated text-text-primary focus:outline-hidden focus:border-accent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-text-secondary mb-1">
-                          Brand Guidelines & Notes
-                        </label>
-                        <textarea
-                          value={newClientNotes}
-                          onChange={(e) => setNewClientNotes(e.target.value)}
-                          placeholder="Headline style: Space Grotesk Bold, exact legal disclaimer required on footer."
-                          rows={3}
-                          className="w-full px-3 py-2 text-xs rounded-md border border-border bg-bg-elevated text-text-primary focus:outline-hidden focus:border-accent"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button type="submit" size="sm">
-                        Create Client
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowCreateClient(false)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                )}
-
-                {/* Client Grid */}
                 {clients.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border p-12 text-center text-sm text-text-secondary space-y-3">
-                    <Building2 size={32} className="mx-auto opacity-50" />
-                    <p className="font-medium text-text-primary">
-                      No clients added yet
-                    </p>
-                    <p className="max-w-md mx-auto text-xs">
-                      Clients allow you to scope templates, projects, and brand
-                      assets to specific client accounts.
-                    </p>
-                  </div>
+                  <EmptyState
+                    illustration={<EmptyWorkspaceIllustration size={88} />}
+                    title="Add your first client"
+                    description="Keep brand, templates, and projects together."
+                    action={
+                      userRole === "owner" || userRole === "admin"
+                        ? {
+                            label: "New client",
+                            onClick: () => setShowCreateClient(true),
+                            icon: <Plus size={14} />,
+                          }
+                        : undefined
+                    }
+                  />
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {clients.map((client) => {
-                      const clientProjectCount = projects.filter(
-                        (p) => p.clientId === client.id,
-                      ).length;
-                      const clientTemplateCount = templates.filter(
-                        (t) => t.clientId === client.id,
-                      ).length;
-
-                      return (
-                        <div
-                          key={client.id}
-                          className="p-5 rounded-xl border border-border bg-bg-panel flex flex-col justify-between hover:border-accent/40 transition-colors shadow-xs"
-                        >
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <span
-                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                                  client.status === "active"
-                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                                }`}
-                              >
-                                {client.status}
-                              </span>
-                              <span className="text-xs text-text-secondary font-medium">
-                                {clientProjectCount}{" "}
-                                {clientProjectCount === 1
-                                  ? "project"
-                                  : "projects"}
-                              </span>
-                            </div>
-
-                            <div>
-                              <h4 className="font-bold text-base text-text-primary">
-                                {client.name}
-                              </h4>
-                              <p className="text-xs text-text-secondary mt-1 line-clamp-2">
-                                {client.description ||
-                                  "No description provided."}
-                              </p>
-                            </div>
-
-                            <div className="flex items-center gap-2 text-xs text-text-secondary pt-1">
-                              <LayoutTemplate size={13} />
-                              <span>{clientTemplateCount} templates</span>
-                            </div>
-                          </div>
-
-                          <div className="pt-4 mt-4 border-t border-border flex items-center justify-between">
-                            <button
-                              onClick={() => setSelectedClientId(client.id)}
-                              className="text-xs font-semibold text-accent hover:underline inline-flex items-center gap-1"
-                            >
-                              Client Dashboard &rarr;
-                            </button>
-                            <a
-                              href={`/create?workspace=${encodeURIComponent(selectedWorkspace.id)}&client=${encodeURIComponent(client.id)}`}
-                              className="text-xs font-semibold px-2.5 py-1 rounded bg-bg-elevated hover:bg-accent hover:text-accent-contrast transition-colors"
-                            >
-                              + Design
-                            </a>
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {clients.map((client) => (
+                      <ClientCard
+                        key={client.id}
+                        id={client.id}
+                        name={client.name}
+                        description={client.description}
+                        status={client.status}
+                        projectCount={
+                          projects.filter((p) => p.clientId === client.id)
+                            .length
+                        }
+                        templateCount={
+                          templates.filter((t) => t.clientId === client.id)
+                            .length
+                        }
+                        onOpen={() => setSelectedClientId(client.id)}
+                        onCreateProject={() =>
+                          location.assign(
+                            `/create?workspace=${encodeURIComponent(selectedWorkspace.id)}&client=${encodeURIComponent(client.id)}`,
+                          )
+                        }
+                      />
+                    ))}
                   </div>
                 )}
               </div>
             )}
 
-            {/* TAB: TEMPLATES */}
             {activeTab === "templates" && (
               <WorkspaceTemplatesTab
                 workspace={selectedWorkspace}
@@ -707,7 +593,6 @@ export default function WorkspacePage() {
               />
             )}
 
-            {/* TAB: MEMBERS */}
             {activeTab === "members" && (
               <WorkspaceMembersTab
                 workspace={selectedWorkspace}
@@ -718,8 +603,19 @@ export default function WorkspacePage() {
               />
             )}
           </div>
-        ) : null}
-      </main>
-    </div>
+        ) : (
+          <EmptyState
+            illustration={<EmptyWorkspaceIllustration size={88} />}
+            title="Set up your studio"
+            description="Create a workspace to manage clients and team."
+            action={{
+              label: "New workspace",
+              onClick: () => setShowCreateWs(true),
+              icon: <Plus size={14} />,
+            }}
+          />
+        )}
+      </div>
+    </AppShell>
   );
 }

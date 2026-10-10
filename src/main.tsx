@@ -50,6 +50,8 @@ const PublicTemplatePage = lazy(
   () => import("./features/templates/PublicTemplatePage"),
 );
 const WorkspacePage = lazy(() => import("./features/workspaces/WorkspacePage"));
+const UiPlaygroundPage = lazy(() => import("./features/dev/UiPlaygroundPage"));
+const UiDirectionPage = lazy(() => import("./features/dev/UiDirectionPage"));
 const path = location.pathname.replace(/\/$/, "") || "/";
 const query = new URLSearchParams(location.search);
 // Preserve payment and password-reset links issued by the previous release.
@@ -59,6 +61,10 @@ const screen = path.startsWith("/review/") ? (
   <ReviewPage token={path.split("/")[2]} />
 ) : path.startsWith("/template/") ? (
   <PublicTemplatePage token={path.split("/")[2]} />
+) : path === "/dev/ui" ? (
+  <UiPlaygroundPage />
+) : path === "/dev/ui-direction" ? (
+  <UiDirectionPage />
 ) : path === "/dev/template-gallery" ? (
   <TemplateGalleryPage />
 ) : path === "/workspaces" ? (

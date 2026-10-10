@@ -199,11 +199,11 @@ export function EditorQualityPanel({ project, onApply }: Props) {
           className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${statusTone}`}
         >
           {!report.deliverable.trusted ? (
-            <span>⚠️ Quality · Unverified ({report.overallScore}/100)</span>
+            <span>Needs review</span>
           ) : report.deliverable.status === "quality_approximated" ? (
-            <span>Quality · Approximated ({report.overallScore}/100)</span>
+            <span>Minor limits</span>
           ) : (
-            <span>Quality · {report.overallScore}/100</span>
+            <span>Ready</span>
           )}
         </button>
       ) : (
@@ -211,12 +211,7 @@ export function EditorQualityPanel({ project, onApply }: Props) {
           {/* Header */}
           <div className="flex items-center justify-between gap-4">
             <div>
-              <strong className="text-sm font-semibold">
-                Quality & Fidelity Review
-              </strong>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                DesignSpec vs. Editable Editor Document
-              </p>
+              <strong className="text-sm font-semibold">Design quality</strong>
             </div>
             <button
               type="button"
@@ -247,20 +242,18 @@ export function EditorQualityPanel({ project, onApply }: Props) {
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 p-2">
               <span className="text-[10px] uppercase font-medium text-slate-500 dark:text-slate-400 block">
-                DesignSpec Quality
+                Design Quality
               </span>
               <div className="text-lg font-bold mt-0.5">
                 {report.overallScore}
                 <span className="text-xs font-normal text-slate-500">/100</span>
               </div>
-              <span className="text-[10px] text-slate-500">
-                Idealized layout
-              </span>
+              <span className="text-[10px] text-slate-500">Layout score</span>
             </div>
 
             <div className="rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 p-2">
               <span className="text-[10px] uppercase font-medium text-slate-500 dark:text-slate-400 block">
-                Projection Fidelity
+                Editable Output
               </span>
               <div className="text-lg font-bold mt-0.5">
                 {report.fidelity.score}
@@ -275,7 +268,7 @@ export function EditorQualityPanel({ project, onApply }: Props) {
                       : "text-rose-600 dark:text-rose-400"
                 }`}
               >
-                {report.fidelity.overall} fidelity
+                {report.fidelity.overall === "high" ? "Ready" : "Minor limits"}
               </span>
             </div>
           </div>
@@ -290,7 +283,9 @@ export function EditorQualityPanel({ project, onApply }: Props) {
               >
                 {report.copyValid ? "✓" : "✗"}
               </span>
-              <span>Copy: {report.copyValid ? "Exact (100%)" : "Altered"}</span>
+              <span>
+                Copy check: {report.copyValid ? "Passed" : "Needs review"}
+              </span>
             </div>
             <div className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
               <span
@@ -300,7 +295,9 @@ export function EditorQualityPanel({ project, onApply }: Props) {
               >
                 {report.fitValid ? "✓" : "⚠"}
               </span>
-              <span>Fit: {report.fitValid ? "Fits bounds" : "Overflow"}</span>
+              <span>
+                Fit check: {report.fitValid ? "Fits page" : "Needs review"}
+              </span>
             </div>
           </div>
 

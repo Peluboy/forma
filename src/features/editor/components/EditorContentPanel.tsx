@@ -124,8 +124,8 @@ export function EditorContentPanel({
               );
             })}
           </div>
-          <details className="content-advanced" open>
-            <summary>Advanced: edit the full manuscript</summary>
+          <details className="content-advanced">
+            <summary>Full manuscript</summary>
             <textarea
               className="content-textarea"
               aria-label="Content"

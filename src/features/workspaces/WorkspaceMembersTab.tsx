@@ -4,7 +4,7 @@ import type {
   WorkspaceMemberRole,
   WorkspaceRecord,
 } from "../../domain/workspace/types";
-import { Button } from "../../shared/components/ui/Button";
+import { Button, Input, Select, WorkspaceRoleBadge } from "../../ui";
 
 interface WorkspaceMembersTabProps {
   workspace: WorkspaceRecord;
@@ -37,7 +37,7 @@ export function WorkspaceMembersTab({
     setSuccess("");
     try {
       await onInviteMember(email.trim(), role);
-      setSuccess(`Invited ${email.trim()} as ${role}.`);
+      setSuccess(`Invited ${email.trim()}.`);
       setEmail("");
     } catch (err: any) {
       setError(err?.message || "Failed to invite member.");
@@ -55,26 +55,27 @@ export function WorkspaceMembersTab({
           className="p-4 rounded-lg border border-border bg-bg-panel space-y-3"
         >
           <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-            <UserPlus size={16} /> Invite Team Member
+            <UserPlus size={16} /> Invite member
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
-            <input
+            <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="colleague@agency.com"
-              className="flex-1 px-3 py-2 text-xs rounded-md border border-border bg-bg-elevated text-text-primary placeholder:text-text-tertiary focus:outline-hidden focus:border-accent"
               required
+              className="flex-1"
             />
-            <select
+            <Select
               value={role}
               onChange={(e) => setRole(e.target.value as WorkspaceMemberRole)}
-              className="px-3 py-2 text-xs rounded-md border border-border bg-bg-elevated text-text-primary focus:outline-hidden focus:border-accent"
+              fullWidth={false}
+              className="w-[140px]"
             >
               <option value="admin">Admin</option>
               <option value="designer">Designer</option>
-              <option value="viewer">Viewer</option>
-            </select>
+              <option value="viewer">View only</option>
+            </Select>
             <Button type="submit" size="sm" disabled={busy || !email.trim()}>
               {busy ? "Inviting..." : "Send Invite"}
             </Button>
@@ -120,9 +121,7 @@ export function WorkspaceMembersTab({
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold px-2 py-0.5 rounded capitalize bg-bg-elevated text-text-secondary border border-border">
-                {member.role}
-              </span>
+              <WorkspaceRoleBadge role={member.role} />
 
               {canManage &&
                 member.role !== "owner" &&

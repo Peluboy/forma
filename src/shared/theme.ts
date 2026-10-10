@@ -1,17 +1,22 @@
 /** Theme preference: system | light | dark. Persisted; applied before paint via index.html. */
 export type ThemePreference = "system" | "light" | "dark";
 
-export const THEME_KEY = "forma-theme";
+/** v2 key: the light-first redesign resets earlier OS-driven choices once. */
+export const THEME_KEY = "forma.theme.v2";
+export const DEFAULT_THEME: ThemePreference = "light";
+
+export function normalizeThemePreference(value: unknown): ThemePreference {
+  return value === "light" || value === "dark" || value === "system"
+    ? value
+    : DEFAULT_THEME;
+}
 
 export function readThemePreference(): ThemePreference {
   try {
-    const value = localStorage.getItem(THEME_KEY);
-    if (value === "light" || value === "dark" || value === "system")
-      return value;
+    return normalizeThemePreference(localStorage.getItem(THEME_KEY));
   } catch {
-    /* private mode */
+    return DEFAULT_THEME;
   }
-  return "system";
 }
 
 export function resolvedTheme(
@@ -28,12 +33,11 @@ export function applyThemePreference(
   const root = document.documentElement;
   const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const resolved = resolvedTheme(preference, systemDark);
-  if (preference === "system") root.removeAttribute("data-theme");
-  else root.setAttribute("data-theme", preference);
+  root.setAttribute("data-theme", resolved);
   root.style.colorScheme = resolved;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta)
-    meta.setAttribute("content", resolved === "dark" ? "#0f0f12" : "#f4f4f5");
+    meta.setAttribute("content", resolved === "dark" ? "#111214" : "#f7f6f3");
   return resolved;
 }
 

@@ -19,7 +19,7 @@ export function EditorQuickStart({
     <section className="starter-guide" aria-label="First design checklist">
       <div className="starter-guide-title">
         <Sparkles size={16} />
-        <strong>Your first design, one step at a time.</strong>
+        <strong>Get started</strong>
         <button aria-label="Dismiss quick-start checklist" onClick={onDismiss}>
           <X size={15} />
         </button>
@@ -27,13 +27,13 @@ export function EditorQuickStart({
       <div className="starter-guide-steps">
         <button className="done" onClick={onStart}>
           <Check size={12} />
-          1. Choose your starting point
+          Style
         </button>
         <button className={applied ? "done" : ""} onClick={onContent}>
-          {applied && <Check size={12} />}2. Apply your manuscript
+          {applied && <Check size={12} />}Content
         </button>
         <button className={exported ? "done" : ""} onClick={onExport}>
-          {exported && <Check size={12} />}3. Check and export
+          {exported && <Check size={12} />}Export
         </button>
       </div>
     </section>

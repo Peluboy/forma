@@ -12,7 +12,14 @@ import type { ClientRecord } from "../../domain/workspace/client";
 import type { WorkspaceRecord } from "../../domain/workspace/types";
 import type { TemplateFamilyRecord } from "../../domain/template-authoring/types";
 import type { Project } from "../../domain/design/model";
-import { Button } from "../../shared/components/ui/Button";
+import {
+  Button,
+  EmptyState,
+  LinkButton,
+  ProjectCard,
+  StatusBadge,
+  Tabs,
+} from "../../ui";
 
 interface ClientDashboardProps {
   workspace: WorkspaceRecord;
@@ -61,18 +68,13 @@ export function ClientDashboard({
             <ArrowLeft size={14} /> Back to {workspace.name}
           </button>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-text-primary">
+            <h1 className="forma-display m-0 text-[28px] font-semibold tracking-tight text-text-primary">
               {client.name}
             </h1>
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                client.status === "active"
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-              }`}
-            >
-              {client.status}
-            </span>
+            <StatusBadge
+              label={client.status === "active" ? "Active" : "Archived"}
+              variant={client.status === "active" ? "success" : "neutral"}
+            />
           </div>
           {client.description && (
             <p className="text-sm text-text-secondary mt-1">
@@ -83,12 +85,14 @@ export function ClientDashboard({
 
         <div className="flex items-center gap-2">
           {canEdit && client.status === "active" && (
-            <a
+            <LinkButton
               href={`/create?workspace=${encodeURIComponent(workspace.id)}&client=${encodeURIComponent(client.id)}`}
-              className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-md bg-accent text-accent-contrast hover:opacity-90 shadow-xs transition-opacity"
+              variant="primary"
+              size="sm"
+              iconLeft={<Sparkles size={14} />}
             >
-              <Sparkles size={14} /> New Client Project
-            </a>
+              Create for this client
+            </LinkButton>
           )}
           {canArchive && (
             <Button
@@ -110,51 +114,31 @@ export function ClientDashboard({
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-4 border-b border-border text-sm">
-        <button
-          onClick={() => setTab("templates")}
-          className={`pb-2.5 font-medium transition-colors border-b-2 ${
-            tab === "templates"
-              ? "border-accent text-text-primary"
-              : "border-transparent text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          Templates ({clientTemplates.length + workspaceTemplates.length})
-        </button>
-        <button
-          onClick={() => setTab("projects")}
-          className={`pb-2.5 font-medium transition-colors border-b-2 ${
-            tab === "projects"
-              ? "border-accent text-text-primary"
-              : "border-transparent text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          Projects ({clientProjects.length})
-        </button>
-        <button
-          onClick={() => setTab("notes")}
-          className={`pb-2.5 font-medium transition-colors border-b-2 ${
-            tab === "notes"
-              ? "border-accent text-text-primary"
-              : "border-transparent text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          Notes & Guidelines
-        </button>
-      </div>
+      <Tabs
+        activeId={tab}
+        onChange={(id) => setTab(id as "templates" | "projects" | "notes")}
+        items={[
+          {
+            id: "templates",
+            label: "Templates",
+            badge: clientTemplates.length + workspaceTemplates.length,
+          },
+          { id: "projects", label: "Projects", badge: clientProjects.length },
+          { id: "notes", label: "Notes" },
+        ]}
+      />
 
       {/* Tab Content: Templates */}
       {tab === "templates" && (
         <div className="space-y-6">
           <div>
             <h3 className="text-sm font-semibold text-text-primary mb-3">
-              Dedicated Client Templates
+              Client templates
             </h3>
             {clientTemplates.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-text-secondary">
                 <LayoutTemplate size={24} className="mx-auto mb-2 opacity-50" />
-                No client-specific templates assigned yet.
+                No client templates yet.
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -165,7 +149,7 @@ export function ClientDashboard({
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold px-2 py-0.5 rounded bg-accent/10 text-accent">
-                        Client Template
+                        Client
                       </span>
                       <span className="text-xs text-text-secondary">
                         v{t.versionNumber}
@@ -250,47 +234,47 @@ export function ClientDashboard({
       {tab === "projects" && (
         <div className="space-y-4">
           {clientProjects.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-text-secondary space-y-3">
-              <FolderOpen size={28} className="mx-auto opacity-50" />
-              <p>No projects generated for this client yet.</p>
-              {canEdit && client.status === "active" && (
-                <a
-                  href={`/create?workspace=${encodeURIComponent(workspace.id)}&client=${encodeURIComponent(client.id)}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-accent text-accent-contrast"
-                >
-                  <Sparkles size={14} /> Start First Client Project
-                </a>
-              )}
-            </div>
+            <EmptyState
+              illustration={
+                <FolderOpen size={32} className="text-text-tertiary" />
+              }
+              title="No projects for this client yet"
+              description="Start a design for this client using their dedicated brand and approved templates."
+              action={
+                canEdit && client.status === "active"
+                  ? {
+                      label: "Create design for client",
+                      onClick: () =>
+                        location.assign(
+                          `/create?workspace=${encodeURIComponent(workspace.id)}&client=${encodeURIComponent(client.id)}`,
+                        ),
+                      icon: <Sparkles size={14} />,
+                    }
+                  : undefined
+              }
+            />
           ) : (
-            <div className="divide-y divide-border border border-border rounded-lg bg-bg-panel overflow-hidden">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {clientProjects.map((project) => (
-                <div
+                <ProjectCard
                   key={project.id}
-                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-bg-elevated/40 transition-colors"
-                >
-                  <div>
-                    <h4 className="font-semibold text-text-primary text-sm">
-                      {project.name}
-                    </h4>
-                    <div className="flex items-center gap-3 text-xs text-text-secondary mt-1">
-                      <span>Format: {project.format}</span>
-                      <span>•</span>
-                      <span>
-                        Updated:{" "}
-                        {new Date(project.updatedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={`/editor?project=${encodeURIComponent(project.id)}`}
-                      className="text-xs font-semibold text-accent hover:underline px-2.5 py-1"
-                    >
-                      Open in Editor
-                    </a>
-                  </div>
-                </div>
+                  id={project.id}
+                  name={project.name}
+                  family={project.family}
+                  templateName={project.template}
+                  updatedAt={project.updatedAt}
+                  qualityScore={
+                    typeof project.metadata?.qualityScore === "number"
+                      ? project.metadata.qualityScore
+                      : 90
+                  }
+                  clientName={client.name}
+                  onOpen={() =>
+                    location.assign(
+                      `/editor?project=${encodeURIComponent(project.id)}`,
+                    )
+                  }
+                />
               ))}
             </div>
           )}

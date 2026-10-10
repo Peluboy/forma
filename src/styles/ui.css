@@ -1,29 +1,30 @@
-/* Shared Studio Ink UI primitives — use semantic tokens only. */
+/* Forma UI v2 shared utilities. Semantic tokens only. */
 
-/* NOTE: .button / .ui-button kept here as legacy shim for unmigrated callsites.
- * New code should use the <Button> component from shared/components/ui/Button.tsx
- * Delete this block once all callsites are migrated. */
+/* Legacy .button / .ui-button shim for unmigrated callsites. */
 .ui-button,
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
+  gap: var(--sp-8);
   height: var(--control-height);
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-sm);
+  padding: 0 var(--sp-16);
+  border-radius: var(--radius-md);
   font-size: var(--text-sm);
-  font-weight: 550;
+  font-weight: 600;
   border: 1px solid transparent;
   transition:
-    background 0.15s ease-out,
-    border-color 0.15s ease-out,
-    color 0.15s ease-out;
+    background var(--dur-fast) ease-out,
+    border-color var(--dur-fast) ease-out,
+    color var(--dur-fast) ease-out,
+    transform var(--dur-fast) ease-out,
+    box-shadow var(--dur-fast) ease-out;
 }
 .button.primary,
 .ui-button.primary {
   background: var(--accent);
   color: var(--text-on-accent);
+  box-shadow: var(--shadow-xs);
 }
 .button.primary:hover:not(:disabled),
 .ui-button.primary:hover:not(:disabled) {
@@ -34,10 +35,12 @@
   background: var(--bg-panel);
   color: var(--text-primary);
   border-color: var(--border);
+  box-shadow: var(--shadow-xs);
 }
 .button.secondary:hover:not(:disabled),
 .ui-button.secondary:hover:not(:disabled) {
-  background: var(--bg-muted);
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
 }
 .button.ghost,
 .ui-button.ghost {
@@ -57,9 +60,127 @@
 .button:disabled,
 .ui-button:disabled {
   opacity: 0.45;
+  cursor: not-allowed;
 }
 .ui-button.ui-button-sm {
-  height: 28px;
-  padding-inline: var(--space-3);
+  height: var(--control-height-sm);
+  padding-inline: var(--sp-12);
   font-size: var(--text-xs);
+  border-radius: var(--radius-sm);
+}
+
+/* Focus */
+.forma-focus-ring:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Cards */
+.forma-card-hover {
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-fast) ease-out;
+}
+.forma-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+
+/* Preview frame: paper on a soft backdrop */
+.forma-preview-frame {
+  background: var(--gradient-preview);
+}
+.forma-preview-frame > .forma-preview-paper {
+  box-shadow:
+    0 1px 2px rgba(22, 24, 29, 0.08),
+    0 10px 24px rgba(22, 24, 29, 0.1);
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+.group:hover .forma-preview-frame > .forma-preview-paper {
+  transform: translateY(-3px) scale(1.015);
+}
+.forma-preview-paper svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Surfaces */
+.forma-hero-surface {
+  background: var(--gradient-hero);
+}
+.forma-glow-surface {
+  background: var(--gradient-card-glow), var(--bg-panel);
+}
+.forma-empty-surface {
+  background: var(--gradient-empty);
+}
+.forma-dot-grid {
+  background-color: var(--canvas-stage);
+  background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.forma-mesh-bg {
+  background: var(--gradient-card-glow), var(--bg-page);
+}
+.forma-glass {
+  background: color-mix(in srgb, var(--bg-panel) 82%, transparent);
+  backdrop-filter: blur(14px);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+/* Skeleton shimmer */
+.forma-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-muted);
+}
+.forma-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--bg-panel) 70%, transparent),
+    transparent
+  );
+  animation: forma-shimmer 1.4s infinite;
+}
+@keyframes forma-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Gentle float for art pieces */
+.forma-float {
+  animation: forma-float 7s ease-in-out infinite;
+}
+.forma-float-slow {
+  animation: forma-float 10s ease-in-out infinite;
+}
+@keyframes forma-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.forma-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.045em;
+}
+
+.forma-scrollbar-none {
+  scrollbar-width: none;
+}
+.forma-scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

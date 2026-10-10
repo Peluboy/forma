@@ -689,7 +689,7 @@ summary:focus-visible {
   grid-template-columns: 45% 55%;
 }
 .auth-story {
-  background: var(--accent-muted);
+  background: var(--gradient-hero);
   padding: 42px 60px;
   display: flex;
   flex-direction: column;
